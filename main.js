@@ -1,20 +1,18 @@
 // ==UserScript==
-// @name         Yad2 -> Memento (v3.4: stable tiles + stable contacts + all fields + upsert)
+// @name         Yad2 -> Memento (v3.5: contacts fixed via data-testid + reveal phone)
 // @namespace    berman
-// @version      3.4
+// @version      3.5
 // @match        https://www.yad2.co.il/realestate/item/*
 // @run-at       document-idle
 // @grant        GM_addStyle
 // ==/UserScript==
 
 (() => {
-  // ===== CONFIG =====
   const TOKEN = "PASTE_YOUR_TOKEN_HERE";
   const LIBRARY_ID = "jRdNE9YJP";
   const API_BASE = "https://api.mementodatabase.com/v1";
   const DEBUG = false;
 
-  // ===== FIELD IDs (your confirmed IDs) =====
   const FID = {
     URL: 0,
     CreatedDate: 1,
@@ -40,7 +38,6 @@
     Phone2: 28,
   };
 
-  // ===== UI =====
   GM_addStyle(`
     #mementoSaveBtn{
       position:fixed; right:16px; bottom:16px; z-index:999999;
@@ -57,11 +54,9 @@
   btn.textContent = "Save to Memento";
   document.body.appendChild(btn);
 
-  // ===== helpers =====
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const norm = (s) => (s || "").toString().replace(/\s+/g, " ").trim();
   const digits = (s) => (s || "").toString().replace(/[^\d]/g, "");
-
   const asNum = (x) => {
     if (x === 0) return 0;
     const d = digits(x);
@@ -69,9 +64,7 @@
     const n = Number(d);
     return Number.isFinite(n) ? n : null;
   };
-
-  const keepIf = (n, pred) =>
-    typeof n === "number" && Number.isFinite(n) && pred(n) ? n : null;
+  const keepIf = (n, pred) => (typeof n === "number" && Number.isFinite(n) && pred(n) ? n : null);
 
   function normalizeNumerics({ Rooms, Floor, Area, BuiltArea, Floors }) {
     return {
@@ -109,7 +102,7 @@
     return "";
   }
 
-  // ===== CreatedDate (strict; does NOT scan Description) =====
+  // ---------- CreatedDate (strict) ----------
   function extractCreatedDateStrict() {
     const clean = (s) =>
       (s || "")
@@ -128,27 +121,10 @@
       const ms = parseDMY(el.textContent || "");
       if (ms) return ms;
     }
-
-    // fallback only inside report/meta blocks (still not Description)
-    const scope =
-      document.querySelector('[class*="report-ad_"]') ||
-      document.querySelector('[data-testid*="report"]') ||
-      null;
-
-    if (scope) {
-      const cand = Array.from(scope.querySelectorAll("div,span,p")).filter((el) =>
-        (el.textContent || "").includes("פורסם")
-      );
-      for (const el of cand) {
-        const ms = parseDMY(el.textContent || "");
-        if (ms) return ms;
-      }
-    }
-
     return null;
   }
 
-  // ===== Rooms/Floor/Area/Floors (stable: building tiles only) =====
+  // ---------- Rooms/Floor/Area/Floors (tiles only) ----------
   function extractRoomsFloorAreaFromTilesStable() {
     const container =
       document.querySelector('[data-testid="building-details"]') ||
@@ -185,7 +161,7 @@
     return { Rooms, Floor, FloorsFromSlash, Area };
   }
 
-  // ===== Additional details map (for BuiltArea, Floors fallback) =====
+  // ---------- Additional details map ----------
   function extractAdditionalDetailsMap() {
     const labels = Array.from(document.querySelectorAll('[class*="item-detail_label"]'));
     const values = Array.from(document.querySelectorAll('[class*="item-detail_value"]'));
@@ -198,14 +174,14 @@
     return map;
   }
 
-  // ===== Title/Description =====
+  // ---------- Title/Description ----------
   function extractTitleAndDescription() {
     const Title = getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null;
     const Description = getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null;
     return { Title, Description };
   }
 
-  // ===== Address split -> Type/Location/City =====
+  // ---------- Address split ----------
   function extractAddressSplit() {
     const AddressRaw = getFirstText(["[data-testid='address']", "[class*='address_address']", "[class*='address']"]) || null;
     if (!AddressRaw) return { Type: null, Location: null, City: null };
@@ -230,7 +206,7 @@
     };
   }
 
-  // ===== Price =====
+  // ---------- Price ----------
   function extractPriceFallback() {
     const t = norm(document.body?.innerText || "");
     const matches = Array.from(t.matchAll(/₪\s*([\d,]{4,})/g))
@@ -239,7 +215,7 @@
     return matches.length ? Math.max(...matches) : null;
   }
 
-  // ===== Images =====
+  // ---------- Images ----------
   function extractImages() {
     const uniqArr = (arr) => Array.from(new Set(arr));
     const toAbsHttps = (u) => {
@@ -294,56 +270,106 @@
     };
   }
 
-  // ===== Contacts (broker vs owner autodetect by section) =====
-  function extractUnifiedContactsStable() {
+  // ---------- NEW: attempt to reveal phone(s) ----------
+  async function revealPhonesIfNeeded() {
+    // Click buttons/links that typically reveal phone numbers.
+    const candidates = Array.from(document.querySelectorAll("button, a"))
+      .filter((el) => {
+        const t = (el.innerText || el.textContent || "").trim();
+        return /הצג|חשפ|טלפון|מספר/.test(t) && /מספר|טלפון/.test(t);
+      })
+      .slice(0, 6);
+
+    for (const el of candidates) {
+      try { el.click(); } catch {}
+      await sleep(200);
+    }
+  }
+
+  // ---------- Contacts (fixed: data-testid first, class as fallback) ----------
+  function extractContactsUnified_DataTestIdFirst() {
     const cleanPhone = (s) => (s || "").toString().replace(/[^\d]/g, "") || null;
     const txt = (el) => (el?.textContent || "").trim() || null;
 
-    // Agency name (optional)
-    const agencySpan = document.querySelector('[data-testid="agency-details"] .agency-details_mediatingAgency__w108Y');
-    let agencyLine = (agencySpan?.textContent || "").trim();
-    if (!agencyLine) {
-      const block = document.querySelector('[data-testid="agency-details"]')?.textContent || "";
-      agencyLine = block.split("\n").map((x) => x.trim()).find((x) => x.startsWith("תיווך:")) || "";
+    // Agency text: take full text from [data-testid="agency-details"] and extract after "תיווך:"
+    let Agency = null;
+    const agencyBlock = document.querySelector('[data-testid="agency-details"]');
+    if (agencyBlock) {
+      const t = norm(agencyBlock.textContent || "");
+      const m = t.match(/תיווך:\s*([^\n\r]+?)(?:\s{2,}|$)/);
+      if (m && m[1]) {
+        const name = m[1].replace(/לאתר המשרד.*/,"").trim();
+        Agency = name || null;
+      }
     }
-    const Agency = agencyLine ? agencyLine.replace(/^תיווך:\s*/, "").trim() || null : null;
+    // fallback to your known class (if present)
+    if (!Agency) {
+      const agencySpan = document.querySelector('.agency-details_mediatingAgency__w108Y,[class*="agency-details_mediatingAgency__"]');
+      const line = (agencySpan?.textContent || "").trim();
+      if (line) Agency = line.replace(/^תיווך:\s*/, "").trim() || null;
+    }
 
+    // Detect broker vs owner by existence of the broker contacts section OR broker name testid
     const brokerSection =
       document.querySelector(".forsale-agency-contact-section_agencyAdContactsBox") ||
-      document.querySelector('[data-testid="agency-ad-contacts"]') ||
+      document.querySelector('[data-testid="forsale-agency-contact-section"]') ||
+      document.querySelector('[data-testid="agency-ad-contact-info-name"]')?.closest("section,div") ||
       null;
 
     const contacts = [];
 
     if (brokerSection) {
-      const boxes = Array.from(
-        brokerSection.querySelectorAll(".agency-ad-contact-info, [class*='agency-ad-contact-info']")
-      );
-      for (const box of boxes) {
-        const name = txt(
-          box.querySelector(
-            ".agency-ad-contact-info_name, [data-testid='agency-ad-contact-info-name'], [class*='agency-ad-contact-info_name']"
-          )
-        );
-        const phone = cleanPhone(txt(box.querySelector(".phone-number-link, [data-testid='phone-number-link']")));
-        if (name || phone) contacts.push({ name, phone });
-        if (contacts.length >= 2) break;
+      // Prefer data-testid
+      const nameNodes = Array.from(brokerSection.querySelectorAll('[data-testid="agency-ad-contact-info-name"]'));
+      const phoneNodes = Array.from(brokerSection.querySelectorAll('[data-testid="phone-number-link"]'));
+
+      // Pair by closest card if possible
+      const cards = Array.from(brokerSection.querySelectorAll('[data-testid="agency-ad-contact-info"], .agency-ad-contact-info, [class*="agency-ad-contact-info"]'));
+      if (cards.length) {
+        for (const card of cards) {
+          const name = txt(card.querySelector('[data-testid="agency-ad-contact-info-name"]')) ||
+                       txt(card.querySelector(".agency-ad-contact-info_name,[class*='agency-ad-contact-info_name']"));
+          const phone = cleanPhone(
+            txt(card.querySelector('[data-testid="phone-number-link"]')) ||
+            txt(card.querySelector(".phone-number-link,[class*='phone-number-link']"))
+          );
+          if (name || phone) contacts.push({ name, phone });
+          if (contacts.length >= 2) break;
+        }
+      } else {
+        // fallback: zip arrays
+        for (let i = 0; i < Math.min(2, Math.max(nameNodes.length, phoneNodes.length)); i++) {
+          const name = txt(nameNodes[i]);
+          const phone = cleanPhone(txt(phoneNodes[i]));
+          if (name || phone) contacts.push({ name, phone });
+        }
       }
     } else {
       const ownerSection =
         document.querySelector(".forsale-contact-section_adContactsBox") ||
-        document.querySelector("[class*='adContactsBox']") ||
+        document.querySelector('[data-testid="forsale-contact-section"]') ||
+        document.querySelector(".ad-contact-info_name,[class*='ad-contact-info_name']")?.closest("section,div") ||
         null;
 
-      const boxes = ownerSection
-        ? Array.from(ownerSection.querySelectorAll(".ad-contacts_adContactInfoBox, [class*='adContactInfoBox']"))
-        : [];
-
-      for (const box of boxes) {
-        const name = txt(box.querySelector(".ad-contact-info_name, [class*='ad-contact-info_name']"));
-        const phone = cleanPhone(txt(box.querySelector(".ad-contact-info_phoneNumber, [class*='ad-contact-info_phoneNumber']")));
-        if (name || phone) contacts.push({ name, phone });
-        if (contacts.length >= 2) break;
+      if (ownerSection) {
+        const cards = Array.from(ownerSection.querySelectorAll(".ad-contacts_adContactInfoBox,[class*='adContactInfoBox']"));
+        if (cards.length) {
+          for (const card of cards) {
+            const name = txt(card.querySelector(".ad-contact-info_name,[class*='ad-contact-info_name']"));
+            const phone = cleanPhone(txt(card.querySelector(".ad-contact-info_phoneNumber,[class*='ad-contact-info_phoneNumber']")));
+            if (name || phone) contacts.push({ name, phone });
+            if (contacts.length >= 2) break;
+          }
+        } else {
+          // fallback: pick first two occurrences
+          const names = Array.from(ownerSection.querySelectorAll(".ad-contact-info_name,[class*='ad-contact-info_name']")).map(txt);
+          const phones = Array.from(ownerSection.querySelectorAll(".ad-contact-info_phoneNumber,[class*='ad-contact-info_phoneNumber']")).map((p)=>cleanPhone(txt(p)));
+          for (let i = 0; i < Math.min(2, Math.max(names.length, phones.length)); i++) {
+            const name = names[i] || null;
+            const phone = phones[i] || null;
+            if (name || phone) contacts.push({ name, phone });
+          }
+        }
       }
     }
 
@@ -356,9 +382,9 @@
     };
   }
 
-  // ===== Extract all =====
+  // ---------- Extract all ----------
   async function extractAll() {
-    // Wait a bit for dynamic sections
+    // wait for building tiles
     for (let i = 0; i < 120; i++) {
       const ok = !!(
         document.querySelector('[data-testid="building-details"]') ||
@@ -367,6 +393,10 @@
       if (ok) break;
       await sleep(150);
     }
+
+    // try reveal phones (safe even if nothing to click)
+    await revealPhonesIfNeeded();
+    await sleep(250);
 
     const map = extractAdditionalDetailsMap();
     const FloorsFromMap = asNum(map["קומות בבניין"]);
@@ -400,9 +430,9 @@
     const addr = extractAddressSplit();
     const imgs = extractImages();
     const CreatedDate = extractCreatedDateStrict();
-    const contacts = extractUnifiedContactsStable();
+    const c = extractContactsUnified_DataTestIdFirst();
 
-    if (DEBUG) console.log({ Rooms, Floor, Area, Floors, BuiltArea, CreatedDate, contacts, imgs });
+    if (DEBUG) console.log({ Rooms, Floor, Area, Floors, BuiltArea, CreatedDate, c, imgs });
 
     return {
       URL: location.href,
@@ -426,15 +456,15 @@
       Image_URL_First: imgs.Image_URL_First ?? null,
       imgCount: imgs.imgCount ?? 0,
 
-      Agency: contacts.Agency ?? null,
-      Name: contacts.Name ?? null,
-      Phone: contacts.Phone ?? null,
-      Name2: contacts.Name2 ?? null,
-      Phone2: contacts.Phone2 ?? null,
+      Agency: c.Agency ?? null,
+      Name: c.Name ?? null,
+      Phone: c.Phone ?? null,
+      Name2: c.Name2 ?? null,
+      Phone2: c.Phone2 ?? null,
     };
   }
 
-  // ===== Upsert to Memento (by URL) =====
+  // ---------- Upsert ----------
   async function upsertToMemento(v) {
     if (!TOKEN || TOKEN.includes("PASTE")) throw new Error("Set TOKEN at top of script.");
 
@@ -471,7 +501,6 @@
     add(FID.Name2, v.Name2);
     add(FID.Phone2, v.Phone2);
 
-    // Find existing by URL
     const listUrl = `${API_BASE}/libraries/${encodeURIComponent(LIBRARY_ID)}/entries?token=${encodeURIComponent(TOKEN)}&pageSize=1000`;
     const list = await jfetch(listUrl, { method: "GET" });
 
@@ -489,11 +518,11 @@
     if (existingId) {
       const putUrl = `${API_BASE}/libraries/${encodeURIComponent(LIBRARY_ID)}/entries/${encodeURIComponent(existingId)}?token=${encodeURIComponent(TOKEN)}`;
       await jfetch(putUrl, { method: "PUT", body });
-      alert(`✅ Updated | Rooms:${v.Rooms ?? "-"} Floor:${v.Floor ?? "-"} Floors:${v.Floors ?? "-"} Area:${v.Area ?? "-"} | Name2:${v.Name2 ? "OK" : "-"} | Images:${v.imgCount ?? 0}`);
+      alert(`✅ Updated | Agency:${v.Agency ? "OK" : "-"} | Phone:${v.Phone ? "OK" : "-"} | Phone2:${v.Phone2 ? "OK" : "-"}`);
     } else {
       const postUrl = `${API_BASE}/libraries/${encodeURIComponent(LIBRARY_ID)}/entries?token=${encodeURIComponent(TOKEN)}`;
       await jfetch(postUrl, { method: "POST", body });
-      alert(`✅ Created | Rooms:${v.Rooms ?? "-"} Floor:${v.Floor ?? "-"} Floors:${v.Floors ?? "-"} Area:${v.Area ?? "-"} | Name2:${v.Name2 ? "OK" : "-"} | Images:${v.imgCount ?? 0}`);
+      alert(`✅ Created | Agency:${v.Agency ? "OK" : "-"} | Phone:${v.Phone ? "OK" : "-"} | Phone2:${v.Phone2 ? "OK" : "-"}`);
     }
   }
 
