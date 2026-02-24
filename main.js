@@ -9,7 +9,7 @@
 // ==/UserScript==
 
 (() => {
-  const TOKEN = "PASTE_YOUR_TOKEN_HERE";
+  const TOKEN = "OcBiYp9FzqXyVS1gjnKqAT06BQO33O";
   const LIBRARY_ID = "jRdNE9YJP";
   const API_BASE = "https://api.mementodatabase.com/v1";
 
