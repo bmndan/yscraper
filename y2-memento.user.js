@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 -> Memento
 // @namespace    bmndan
-// @version      1.0
+// @version      1.1
 // @match        *://*.yad2.co.il/realestate/item/*
 // @run-at       document-end
 // @grant        GM_xmlhttpRequest
@@ -34,9 +34,9 @@
         url: TOKEN_URL,
         onload: r => {
           if (r.status === 200) resolve(clean(r.responseText));
-          else reject(new Error('token load failed: ' + r.status));
+          else reject('Token load failed: ' + r.status);
         },
-        onerror: () => reject(new Error('token request failed'))
+        onerror: () => reject('Token request failed')
       });
     });
   }
@@ -56,7 +56,7 @@
     let y = +m[3];
     if (y < 100) y += 2000;
 
-    return Date.UTC(y, +m[2] - 1, +m[1], 0, 0, 0);
+    return Date.UTC(y, +m[2] - 1, +m[1]);
   }
 
   async function create() {
@@ -65,7 +65,7 @@
     const date = parseDateToTimestamp(dateText);
 
     if (!date) {
-      alert('date not found');
+      alert('Published date not found');
       return;
     }
 
@@ -86,7 +86,7 @@
     });
 
     const text = await r.text();
-    alert('status ' + r.status + '\n\n' + text);
+    alert('Status: ' + r.status + '\n\n' + text);
   }
 
   function addButton() {
@@ -95,24 +95,13 @@
     const btn = document.createElement('button');
     btn.id = 'y2-memento-btn';
     btn.textContent = 'Create in Memento';
-    btn.style.position = 'fixed';
-    btn.style.top = '20px';
-    btn.style.right = '20px';
-    btn.style.zIndex = '999999';
-    btn.style.padding = '10px 14px';
-    btn.style.border = 'none';
-    btn.style.borderRadius = '8px';
-    btn.style.background = '#673ab7';
-    btn.style.color = '#fff';
-    btn.style.cursor = 'pointer';
-
-    btn.onclick = () => {
-      create().catch(err => alert(String(err && err.stack ? err.stack : err)));
-    };
+    btn.style = 'position:fixed;top:20px;right:20px;z-index:999999;padding:10px;background:#673ab7;color:#fff;border:none;border-radius:8px;cursor:pointer;';
+    btn.onclick = create;
 
     document.body.appendChild(btn);
   }
 
   if (document.body) addButton();
   else window.addEventListener('load', addButton);
+
 })();
