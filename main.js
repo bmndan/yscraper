@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.2.0
+// @version      4.3.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -42,7 +42,8 @@
       Name2: 27,
       Phone2: 28,
       Image_Gallery: 37,   // גלריה
-      Published: 41        // DateTime
+      Created: 42,         // נוצר (Date)
+      Published: 43        // פורסם (DateTime)
     };
 
     function clean(s) {
@@ -72,6 +73,12 @@
 
     function getCleanItemUrl() {
       return location.origin + location.pathname;
+    }
+
+    function getTodayLocalDate() {
+      var d = new Date();
+      function pad(n) { return String(n).padStart(2, "0"); }
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
     }
 
     function getToken() {
@@ -207,6 +214,14 @@
       return isFinite(n) ? n : null;
     }
 
+    function asFloat(x) {
+      if (x === 0) return 0;
+      var s = String(x || "").replace(",", ".").match(/\d+(?:\.\d+)?/);
+      if (!s) return null;
+      var n = Number(s[0]);
+      return isFinite(n) ? n : null;
+    }
+
     function keepIf(n, pred) {
       return (typeof n === "number" && isFinite(n) && pred(n)) ? n : null;
     }
@@ -266,7 +281,7 @@
         unit = unit.trim();
         var combined = (left + " " + unit).trim();
 
-        if (unit.indexOf("חדרים") !== -1) Rooms = asNum(left);
+        if (unit.indexOf("חדרים") !== -1) Rooms = asFloat(left);
         if (unit.indexOf('מ"ר') !== -1 || unit.indexOf('מ״ר') !== -1 || unit.indexOf('מ\"ר') !== -1) Area = asNum(left);
         if (combined.indexOf("קרקע") !== -1) Floor = 0;
 
@@ -530,7 +545,7 @@
     }
 
     function parseDateToIsoWithOffset(text) {
-      var m = String(text || '').match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+      var m = String(text || "").match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
       if (!m) return null;
 
       var day = parseInt(m[1], 10);
@@ -540,23 +555,21 @@
 
       var d = new Date(year, month - 1, day, 0, 0, 0);
 
-      function pad(n) {
-        return String(Math.abs(n)).padStart(2, '0');
-      }
+      function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
 
       var offsetMin = -d.getTimezoneOffset();
-      var sign = offsetMin >= 0 ? '+' : '-';
+      var sign = offsetMin >= 0 ? "+" : "-";
       var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
       var mm = pad(Math.abs(offsetMin) % 60);
 
       return (
-        d.getFullYear() + '-' +
-        pad(d.getMonth() + 1) + '-' +
-        pad(d.getDate()) + 'T' +
-        pad(d.getHours()) + ':' +
-        pad(d.getMinutes()) + ':' +
+        d.getFullYear() + "-" +
+        pad(d.getMonth() + 1) + "-" +
+        pad(d.getDate()) + "T" +
+        pad(d.getHours()) + ":" +
+        pad(d.getMinutes()) + ":" +
         pad(d.getSeconds()) +
-        sign + hh + ':' + mm
+        sign + hh + ":" + mm
       );
     }
 
@@ -607,6 +620,7 @@
 
       return {
         URL: getCleanItemUrl(),
+        Created: getTodayLocalDate(),
         Published: publishedIso,
         Price: extractPriceFallback(),
 
@@ -648,14 +662,11 @@
       }
 
       add(FID.URL, v.URL);
+      add(FID.Created, v.Created);
       add(FID.Published, v.Published);
 
-      if (v.Image_Main) {
-        add(FID.Image_Main, v.Image_Main);
-      }
-      if (v.Image_Gallery && v.Image_Gallery.length) {
-        add(FID.Image_Gallery, v.Image_Gallery);
-      }
+      if (v.Image_Main) add(FID.Image_Main, v.Image_Main);
+      if (v.Image_Gallery && v.Image_Gallery.length) add(FID.Image_Gallery, v.Image_Gallery);
 
       add(FID.Price, v.Price);
       add(FID.Rooms, v.Rooms);
@@ -697,12 +708,12 @@
         var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries/" + encodeURIComponent(existingId) + "?token=" + encodeURIComponent(TOKEN);
         await jfetch(putUrl, { method: "PUT", body: body });
-        alert("✅ Updated | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Updated | Created:" + (v.Created ? "OK" : "-") + " | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       } else {
         var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries?token=" + encodeURIComponent(TOKEN);
         await jfetch(postUrl, { method: "POST", body: body });
-        alert("✅ Created | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Created | Created:" + (v.Created ? "OK" : "-") + " | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       }
     }
 
