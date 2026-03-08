@@ -1,13 +1,10 @@
 // ==UserScript==
 // @name         Y2 Features Test
 // @namespace    berman
-// @version      1.0
+// @version      1.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        GM_deleteValue
-// @grant        GM_listValues
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
@@ -22,16 +19,16 @@
 
   var FID = {
     URL: 0,
-    Elevator: 48,        // מעלית
-    Terrace: 49,         // מרפסת
-    AC: 50,              // מיזוג
-    Storage: 51,         // מחסן
-    Renovated: 52,       // משופצת
-    Accessibility: 53,   // גישה לנכים
-    Bars: 54,            // סורגים
-    Furnished: 55,       // מרוהטת
-    Condition: 57,       // מצב
-    SolarHeater: 58      // דוד שמש
+    Elevator: 48,
+    Terrace: 49,
+    AC: 50,
+    Storage: 51,
+    Renovated: 52,
+    Accessibility: 53,
+    Bars: 54,
+    Furnished: 55,
+    Condition: 57,
+    SolarHeater: 58
   };
 
   function clean(s) {
@@ -129,14 +126,6 @@
     return map;
   }
 
-  function asNum(x) {
-    if (x === 0) return 0;
-    var d = String(x || "").replace(/[^\d]/g, "");
-    if (!d) return null;
-    var n = Number(d);
-    return isFinite(n) ? n : null;
-  }
-
   function extractActiveFeatureMap() {
     function findFeatureSection() {
       var els = Array.from(document.querySelectorAll("h2,h3,h4,div,span,p"));
@@ -194,14 +183,13 @@
     var map = {};
     if (!root) return map;
 
-    var nodes = Array.from(root.querySelectorAll("button,span,div,p"))
-      .filter(function (el) {
-        var txt = clean(el.textContent);
-        if (!txt) return false;
-        if (txt.length > 20) return false;
-        if (txt === "מה יש בנכס") return false;
-        return true;
-      });
+    var nodes = Array.from(root.querySelectorAll("button,span,div,p")).filter(function (el) {
+      var txt = clean(el.textContent);
+      if (!txt) return false;
+      if (txt.length > 20) return false;
+      if (txt === "מה יש בנכס") return false;
+      return true;
+    });
 
     nodes.forEach(function (el) {
       var txt = clean(el.textContent);
@@ -213,7 +201,7 @@
     return map;
   }
 
-  function extractPropertyFeatures(map) {
+  function extractPropertyFeatures() {
     var active = extractActiveFeatureMap();
 
     function has(label) {
@@ -234,20 +222,17 @@
   }
 
   function extractCondition(map, features) {
-    var raw = clean(
-      map["מצב הנכס"] ||
-      map["מצב"] ||
-      ""
-    );
+    var raw = clean(map["מצב הנכס"] || map["מצב"] || "");
 
     if (raw === "משופץ") return "משופץ ב-5 שנים האחרונים";
-    return raw || (features.Renovated ? "משופץ ב-5 שנים האחרונים" : null);
+    if (!raw && features.Renovated) return "משופץ ב-5 שנים האחרונים";
+    return raw || null;
   }
 
   async function testFeaturesOnly() {
     var TOKEN = await getToken();
     var map = extractAdditionalDetailsMap();
-    var features = extractPropertyFeatures(map);
+    var features = extractPropertyFeatures();
     var condition = extractCondition(map, features);
 
     console.log("details map", map);
