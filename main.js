@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.5.0
+// @version      4.5.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -642,34 +642,48 @@
       };
     }
 
-    function extractPropertyFeatures() {
-      var allText = extractTagsText();
+    function extractFeatureList() {
+      var bodyText = (document.body && document.body.innerText) || "";
+      var m = bodyText.match(/מה יש בנכס([\s\S]*?)(?:הדרך לבית שלכם מתחילה כאן|דווח על מודעה|$)/);
+      if (!m) return [];
 
-      function has(label) {
-        return allText.indexOf(label) !== -1;
+      return m[1]
+        .split(/\n+/)
+        .map(function (x) { return clean(x); })
+        .filter(Boolean);
+    }
+
+    function extractPropertyFeatures(map) {
+      var items = extractFeatureList();
+
+      function hasExact(label) {
+        return items.indexOf(label) !== -1;
       }
 
       return {
-        Parking: has("חניה"),
-        Elevator: has("מעלית"),
-        Terrace: has("מרפסת"),
-        AC: has("מיזוג"),
-        Storage: has("מחסן"),
-        Renovated: has("משופצת"),
-        Accessibility: has("גישה לנכים"),
-        Bars: has("סורגים"),
-        Furnished: has("מרוהטת")
+        Parking: hasExact("חניה") || (asNum(map["חניות"]) || 0) > 0,
+        Elevator: hasExact("מעלית"),
+        Terrace: hasExact("מרפסת"),
+        AC: hasExact("מיזוג"),
+        Storage: hasExact("מחסן"),
+        Renovated: hasExact("משופצת"),
+        Accessibility: hasExact("גישה לנכים"),
+        Bars: hasExact("סורגים"),
+        Furnished: hasExact("מרוהטת")
       };
     }
 
-    function extractCondition() {
-      var allText = extractTagsText();
+    function extractCondition(map, features) {
+      var raw = clean(map["מצב הנכס"] || "");
 
-      if (allText.indexOf("חדש מקבלן") !== -1) return "חדש מקבלן";
-      if (allText.indexOf("חדש - עד 10 שנים") !== -1) return "חדש - עד 10 שנים";
-      if (allText.indexOf("משופץ ב-5 שנים האחרונות") !== -1) return "משופץ ב-5 שנים האחרונות";
-      if (allText.indexOf("במצב שמור") !== -1) return "במצב שמור";
-      if (allText.indexOf("דרוש שיפוץ") !== -1) return "דרוש שיפוץ";
+      if (raw === "חדש מקבלן") return "חדש מקבלן";
+      if (raw === "חדש - עד 10 שנים") return "חדש - עד 10 שנים";
+      if (raw === "במצב שמור") return "במצב שמור";
+      if (raw === "דרוש שיפוץ") return "דרוש שיפוץ";
+
+      if (raw === "משופץ" || features.Renovated) {
+        return "משופץ ב-5 שנים האחרונות";
+      }
 
       return null;
     }
@@ -707,8 +721,8 @@
       var imgs = extractImages();
       var contacts = extractContactsUnified();
       var flags = extractTagsFlags();
-      var features = extractPropertyFeatures();
-      var condition = extractCondition();
+      var features = extractPropertyFeatures(map);
+      var condition = extractCondition(map, features);
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
