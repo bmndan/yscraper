@@ -41,7 +41,8 @@
     "PrevDescription": 59,
     "PrevPrice": 60,
     "Image_URLs_All": 61,
-    "Listing_ID": 62
+    "Listing_ID": 62,
+    "Discount": 66
   },
   "labels": {
     "featureSection": "מה יש בנכס",
