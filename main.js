@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.5.3
+// @version      4.6.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -13,52 +13,12 @@
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
 
-(function () {
+(async function () {
   try {
     var TOKEN_URL = "https://raw.githubusercontent.com/bmndan/yscraper/main/token.txt";
-    var LIBRARY_ID = "jRdNE9YJP";
+    var CONFIG_URL = "https://raw.githubusercontent.com/bmndan/yscraper/main/config.json";
     var API_BASE = "https://api.mementodatabase.com/v1";
     var DEBUG = false;
-
-    var DOMAIN_KEY = "target_domain";
-
-    var FID = {
-      URL: 0,
-      Image_Main: 4,       // תמונה
-      Price: 9,
-      Rooms: 10,
-      Floor: 11,
-      Area: 12,
-      Agency: 13,
-      Name: 14,
-      Phone: 15,
-      Type: 16,
-      Floors: 17,
-      City: 18,
-      Location: 19,
-      Title: 20,
-      Description: 21,
-      BuiltArea: 24,
-      Name2: 27,
-      Phone2: 28,
-      Broker: 33,          // מתווך
-      Exclusive: 34,       // בלעדי
-      Shelter: 36,         // ממד
-      Image_Gallery: 37,   // גלריה
-      Created: 42,         // נוצר
-      Published: 43,       // פורסם
-      Parking: 47,         // חניה
-      Elevator: 48,        // מעלית
-      Terrace: 49,         // מרפסת
-      AC: 50,              // מיזוג
-      Storage: 51,         // מחסן
-      Renovated: 52,       // משופצת
-      Accessibility: 53,   // גישה לנכים
-      Bars: 54,            // סורגים
-      Furnished: 55,       // מרוהטת
-      Condition: 57,       // מצב
-      SolarHeater: 58      // דוד שמש
-    };
 
     function clean(s) {
       return String(s || "")
@@ -68,21 +28,55 @@
         .trim();
     }
 
-    function getStoredDomain() {
-      return GM_getValue(DOMAIN_KEY, "");
+    function getText(sel) {
+      var el = document.querySelector(sel);
+      return el ? clean(el.innerText || el.textContent || "") : "";
     }
 
-    function setStoredDomain(v) {
-      GM_setValue(DOMAIN_KEY, clean(v));
+    function getFirstText(selectors) {
+      for (var i = 0; i < selectors.length; i++) {
+        var v = getText(selectors[i]);
+        if (v) return v;
+      }
+      return "";
     }
 
-    function clearStoredDomain() {
-      GM_deleteValue(DOMAIN_KEY);
+    function sleep(ms) {
+      return new Promise(function (r) { setTimeout(r, ms); });
     }
 
-    function onStoredDomain() {
-      var d = getStoredDomain();
-      return !!d && location.hostname === d;
+    function digits(s) {
+      return String(s || "").replace(/[^\d]/g, "");
+    }
+
+    function asNum(x) {
+      if (x === 0) return 0;
+      var d = digits(x);
+      if (!d) return null;
+      var n = Number(d);
+      return isFinite(n) ? n : null;
+    }
+
+    function asFloat(x) {
+      if (x === 0) return 0;
+      var s = String(x || "").replace(",", ".").match(/\d+(?:\.\d+)?/);
+      if (!s) return null;
+      var n = Number(s[0]);
+      return isFinite(n) ? n : null;
+    }
+
+    function keepIf(n, pred) {
+      return (typeof n === "number" && isFinite(n) && pred(n)) ? n : null;
+    }
+
+    function normalizeNumerics(o) {
+      return {
+        Rooms: keepIf(o.Rooms, function (n) { return n >= 1 && n <= 50; }),
+        Area: keepIf(o.Area, function (n) { return n >= 5 && n <= 5000; }),
+        BuiltArea: keepIf(o.BuiltArea, function (n) { return n >= 5 && n <= 20000; }),
+        Floors: keepIf(o.Floors, function (n) { return n >= 1 && n <= 200; }),
+        Floor: keepIf(o.Floor, function (n) { return n >= 0 && n <= 200; })
+      };
     }
 
     function getCleanItemUrl() {
@@ -91,9 +85,7 @@
 
     function getNowIsoWithOffset() {
       var d = new Date();
-
       function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
-
       var offsetMin = -d.getTimezoneOffset();
       var sign = offsetMin >= 0 ? "+" : "-";
       var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
@@ -110,29 +102,66 @@
       );
     }
 
-    function getToken() {
+    function gmGet(url) {
       return new Promise(function (resolve, reject) {
         GM_xmlhttpRequest({
           method: "GET",
-          url: TOKEN_URL + "?t=" + Date.now(),
+          url: url + (url.indexOf("?") === -1 ? "?t=" : "&t=") + Date.now(),
           headers: { "Cache-Control": "no-cache" },
           onload: function (r) {
-            if (r.status === 200) {
-              var token = String(r.responseText || "")
-                .replace(/^\uFEFF/, "")
-                .replace(/\r/g, "")
-                .trim();
-              if (!token) reject(new Error("token.txt empty"));
-              else resolve(token);
-            } else {
-              reject(new Error("Token load failed: " + r.status));
-            }
+            if (r.status === 200) resolve(r.responseText);
+            else reject(new Error("Load failed: " + r.status + " " + url));
           },
           onerror: function () {
-            reject(new Error("Token request failed"));
+            reject(new Error("Request failed: " + url));
           }
         });
       });
+    }
+
+    async function getToken() {
+      return clean(await gmGet(TOKEN_URL));
+    }
+
+    async function getConfig() {
+      var txt = await gmGet(CONFIG_URL);
+      return JSON.parse(txt);
+    }
+
+    async function jfetch(url, opts) {
+      var headers = Object.assign({ "Content-Type": "application/json" }, (opts && opts.headers) || {});
+      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      var t = await res.text();
+      var data = {};
+      try {
+        data = t ? JSON.parse(t) : {};
+      } catch (e) {
+        throw new Error("Non-JSON response: " + t.slice(0, 220));
+      }
+      if (!res.ok) throw new Error(res.status + ": " + t.slice(0, 320));
+      return data;
+    }
+
+    var CFG = await getConfig();
+    var LIBRARY_ID = CFG.libraryId;
+    var DOMAIN_KEY = CFG.domainKey;
+    var FID = CFG.fields;
+
+    function getStoredDomain() {
+      return GM_getValue(DOMAIN_KEY, "");
+    }
+
+    function setStoredDomain(v) {
+      GM_setValue(DOMAIN_KEY, clean(v));
+    }
+
+    function clearStoredDomain() {
+      GM_deleteValue(DOMAIN_KEY);
+    }
+
+    function onStoredDomain() {
+      var d = getStoredDomain();
+      return !!d && location.hostname === d;
     }
 
     function makeUiButton(id, text, bottom, onClick) {
@@ -231,67 +260,6 @@
       document.body.appendChild(btn);
     }
 
-    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-    function norm(s) { return (s || "").toString().replace(/\s+/g, " ").trim(); }
-    function digits(s) { return (s || "").toString().replace(/[^\d]/g, ""); }
-
-    function asNum(x) {
-      if (x === 0) return 0;
-      var d = digits(x);
-      if (!d) return null;
-      var n = Number(d);
-      return isFinite(n) ? n : null;
-    }
-
-    function asFloat(x) {
-      if (x === 0) return 0;
-      var s = String(x || "").replace(",", ".").match(/\d+(?:\.\d+)?/);
-      if (!s) return null;
-      var n = Number(s[0]);
-      return isFinite(n) ? n : null;
-    }
-
-    function keepIf(n, pred) {
-      return (typeof n === "number" && isFinite(n) && pred(n)) ? n : null;
-    }
-
-    function normalizeNumerics(o) {
-      return {
-        Rooms: keepIf(o.Rooms, function (n) { return n >= 1 && n <= 50; }),
-        Area: keepIf(o.Area, function (n) { return n >= 5 && n <= 5000; }),
-        BuiltArea: keepIf(o.BuiltArea, function (n) { return n >= 5 && n <= 20000; }),
-        Floors: keepIf(o.Floors, function (n) { return n >= 1 && n <= 200; }),
-        Floor: keepIf(o.Floor, function (n) { return n >= 0 && n <= 200; })
-      };
-    }
-
-    async function jfetch(url, opts) {
-      var headers = Object.assign({ "Content-Type": "application/json" }, (opts && opts.headers) || {});
-      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
-      var t = await res.text();
-      var data = {};
-      try {
-        data = t ? JSON.parse(t) : {};
-      } catch (e) {
-        throw new Error("Non-JSON response: " + t.slice(0, 220));
-      }
-      if (!res.ok) throw new Error(res.status + ": " + t.slice(0, 320));
-      return data;
-    }
-
-    function getText(sel) {
-      var el = document.querySelector(sel);
-      return el ? ((el.innerText || el.textContent || "").trim()) : "";
-    }
-
-    function getFirstText(selectors) {
-      for (var i = 0; i < selectors.length; i++) {
-        var v = getText(selectors[i]);
-        if (v) return v;
-      }
-      return "";
-    }
-
     function extractRoomsFloorAreaFromTiles() {
       var container =
         document.querySelector('[data-testid="building-details"]') ||
@@ -304,10 +272,8 @@
 
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var left = (item.querySelector('[data-testid="building-text"]') || {}).textContent || "";
-        left = left.trim();
-        var unit = (item.querySelector(".property-detail_itemValue__V0z6l, [class*='itemValue']") || {}).textContent || "";
-        unit = unit.trim();
+        var left = clean((item.querySelector('[data-testid="building-text"]') || {}).textContent || "");
+        var unit = clean((item.querySelector(".property-detail_itemValue__V0z6l, [class*='itemValue']") || {}).textContent || "");
         var combined = (left + " " + unit).trim();
 
         if (unit.indexOf("חדרים") !== -1) Rooms = asFloat(left);
@@ -331,54 +297,15 @@
       var values = Array.from(document.querySelectorAll('[class*="item-detail_value"]'));
       var map = {};
       for (var i = 0; i < Math.min(labels.length, values.length); i++) {
-        var k = (labels[i].innerText || labels[i].textContent || "").trim();
-        var v = (values[i].innerText || values[i].textContent || "").trim();
+        var k = clean(labels[i].innerText || labels[i].textContent || "");
+        var v = clean(values[i].innerText || values[i].textContent || "");
         if (k) map[k] = v;
       }
       return map;
     }
 
-    function extractTitleAndDescription() {
-      var Title = getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null;
-      var Description = getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null;
-      return { Title: Title, Description: Description };
-    }
-
-    function extractAddressSplit() {
-      var AddressRaw = getFirstText(["[data-testid='address']", "[class*='address_address']", "[class*='address']"]) || null;
-      if (!AddressRaw) return { Type: null, Location: null, City: null };
-
-      var s = AddressRaw.trim();
-      var firstComma = s.indexOf(",");
-      var lastComma = s.lastIndexOf(",");
-
-      if (firstComma === -1) return { Type: s || null, Location: null, City: null };
-      if (firstComma === lastComma) {
-        return {
-          Type: s.slice(0, firstComma).trim() || null,
-          Location: null,
-          City: s.slice(firstComma + 1).trim() || null
-        };
-      }
-      return {
-        Type: s.slice(0, firstComma).trim() || null,
-        Location: s.slice(firstComma + 1, lastComma).trim() || null,
-        City: s.slice(lastComma + 1).trim() || null
-      };
-    }
-
-    function extractPriceFallback() {
-      var t = norm((document.body && document.body.innerText) || "");
-      var matches = Array.from(t.matchAll(/₪\s*([\d,]{4,})/g))
-        .map(function (x) { return Number(digits(x[1])); })
-        .filter(function (n) { return isFinite(n) && n > 0; });
-      return matches.length ? Math.max.apply(null, matches) : null;
-    }
-
     function extractImages() {
-      function uniq(arr) {
-        return Array.from(new Set(arr));
-      }
+      function uniq(arr) { return Array.from(new Set(arr)); }
       function toAbsHttps(u) {
         if (!u) return "";
         u = u.trim();
@@ -435,7 +362,7 @@
     async function revealPhonesIfNeeded() {
       var btns = Array.from(document.querySelectorAll("button, a"))
         .filter(function (el) {
-          return /(הצג|חשפ|לצפייה|לראות).*(טלפון|מספר)/.test(norm(el.innerText || el.textContent || ""));
+          return /(הצג|חשפ|לצפייה|לראות).*(טלפון|מספר)/.test(clean(el.innerText || el.textContent || ""));
         })
         .slice(0, 8);
 
@@ -446,19 +373,19 @@
     }
 
     function extractContactsUnified() {
-      function cleanPhone(s) { return (s || "").toString().replace(/[^\d]/g, "") || null; }
-      function t(el) { return norm((el && el.textContent) || "") || null; }
+      function cleanPhone(s) { return String(s || "").replace(/[^\d]/g, "") || null; }
+      function t(el) { return clean((el && el.textContent) || "") || null; }
 
       var Agency = null;
       var agencySpan =
         document.querySelector('[class*="agency-details_mediatingAgency__"]') ||
         document.querySelector('[data-testid="agency-details"] [class*="mediatingAgency"]');
-      if (agencySpan) Agency = (agencySpan.textContent || "").trim();
+      if (agencySpan) Agency = clean(agencySpan.textContent || "");
 
       if (!Agency) {
         var agencyDetails = document.querySelector('[data-testid="agency-details"]');
         if (agencyDetails) {
-          var lines = (agencyDetails.textContent || "").split("\n").map(norm).filter(Boolean);
+          var lines = (agencyDetails.textContent || "").split("\n").map(clean).filter(Boolean);
           var agencyLine = lines.find(function (x) { return x.indexOf("תיווך:") === 0; });
           if (agencyLine) Agency = agencyLine;
         }
@@ -520,9 +447,7 @@
           }
         }
       } else {
-        var ocards = Array.from(ownerRoot.querySelectorAll(
-          ".ad-contacts_adContactInfoBox,[class*='ad-contacts_adContactInfoBox'],[class*='adContactInfoBox']"
-        ));
+        var ocards = Array.from(ownerRoot.querySelectorAll(".ad-contacts_adContactInfoBox,[class*='ad-contacts_adContactInfoBox'],[class*='adContactInfoBox']"));
 
         for (var k = 0; k < ocards.length; k++) {
           var c = ocards[k];
@@ -583,9 +508,7 @@
       if (year < 100) year += 2000;
 
       var d = new Date(year, month - 1, day, 0, 0, 0);
-
       function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
-
       var offsetMin = -d.getTimezoneOffset();
       var sign = offsetMin >= 0 ? "+" : "-";
       var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
@@ -618,9 +541,8 @@
 
     function extractTagsFlags() {
       var allText = extractTagsText();
-
-      var isExclusive = /(^|\W)בלעדי($|\W)/.test(allText);
-      var hasShelter = /(^|\W)ממ[״"]?ד($|\W)/.test(allText);
+      var isExclusive = allText.indexOf(CFG.tagFlags.Exclusive) !== -1;
+      var hasShelter = new RegExp(CFG.tagFlags.ShelterRegex).test(allText);
 
       var hasAgencyUi =
         !!document.querySelector('[data-testid="agency-details"]') ||
@@ -644,16 +566,34 @@
     }
 
     function extractActiveFeatureMap() {
-      var root =
-        document.querySelector('[class*="tags_tagsBox"]') ||
-        document.querySelector('[data-testid="tags"]') ||
-        document;
-
-      var map = {};
+      function findFeatureSection() {
+        var els = Array.from(document.querySelectorAll("h2,h3,h4,div,span,p"));
+        for (var i = 0; i < els.length; i++) {
+          var t = clean(els[i].textContent);
+          if (t === CFG.labels.featureSection) {
+            var node = els[i];
+            for (var up = 0; up < 4 && node; up++, node = node.parentElement) {
+              if (!node) break;
+              var txt = clean(node.innerText || node.textContent || "");
+              if (
+                txt.indexOf(CFG.labels.featureSection) !== -1 &&
+                (
+                  txt.indexOf(CFG.features.Elevator) !== -1 ||
+                  txt.indexOf(CFG.features.Terrace) !== -1 ||
+                  txt.indexOf(CFG.features.AC) !== -1 ||
+                  txt.indexOf(CFG.features.Storage) !== -1 ||
+                  txt.indexOf(CFG.features.Accessibility) !== -1 ||
+                  txt.indexOf(CFG.features.Renovated) !== -1
+                )
+              ) return node;
+            }
+          }
+        }
+        return null;
+      }
 
       function isInactive(el) {
         if (!el) return false;
-
         var chain = [el];
         var p = el.parentElement;
         while (p && chain.length < 4) {
@@ -664,22 +604,25 @@
         return chain.some(function (node) {
           var cls = String(node.className || "");
           var cs = window.getComputedStyle(node);
-
           if (node.getAttribute("aria-disabled") === "true") return true;
           if (/disabled|inactive|muted|grey|gray|off/i.test(cls)) return true;
           if (cs.display === "none" || cs.visibility === "hidden") return true;
           if (parseFloat(cs.opacity || "1") < 0.95) return true;
           if (cs.filter && cs.filter !== "none" && /grayscale/i.test(cs.filter)) return true;
-
           return false;
         });
       }
 
-      var nodes = Array.from(root.querySelectorAll("*"))
+      var root = findFeatureSection();
+      var map = {};
+      if (!root) return map;
+
+      var nodes = Array.from(root.querySelectorAll("button,span,div,p"))
         .filter(function (el) {
           var txt = clean(el.textContent);
           if (!txt) return false;
-          if (txt.length > 30) return false;
+          if (txt.length > 20) return false;
+          if (txt === CFG.labels.featureSection) return false;
           return true;
         });
 
@@ -693,39 +636,47 @@
       return map;
     }
 
+    function hasFurnitureSection() {
+      var texts = Array.from(document.querySelectorAll("h2,h3,h4,div,span,p"))
+        .map(function (el) { return clean(el.textContent); });
+
+      return texts.indexOf(CFG.labels.furnitureSection) !== -1;
+    }
+
     function extractPropertyFeatures(map) {
       var active = extractActiveFeatureMap();
+      function has(label) { return !!active[label]; }
 
-      function has(label) {
-        return !!active[label];
+      var parkingKeys = CFG.labels.detailsParking || [];
+      var parkingNum = 0;
+      for (var i = 0; i < parkingKeys.length; i++) {
+        parkingNum = Math.max(parkingNum, asNum(map[parkingKeys[i]]) || 0);
       }
 
       return {
-        Parking: has("חניה") || (asNum(map["חניות"]) || 0) > 0,
-        Elevator: has("מעלית"),
-        Terrace: has("מרפסת"),
-        AC: has("מיזוג"),
-        Storage: has("מחסן"),
-        Renovated: has("משופצת"),
-        Accessibility: has("גישה לנכים"),
-        Bars: has("סורגים"),
-        Furnished: has("מרוהטת"),
-        SolarHeater: has("דוד שמש")
+        Parking: parkingNum > 0 || has(CFG.features.Parking),
+        Elevator: has(CFG.features.Elevator),
+        Terrace: has(CFG.features.Terrace),
+        AC: has(CFG.features.AC),
+        Storage: has(CFG.features.Storage),
+        Renovated: has(CFG.features.Renovated),
+        Accessibility: has(CFG.features.Accessibility),
+        Bars: has(CFG.features.Bars),
+        Furnished: hasFurnitureSection(),
+        SolarHeater: has(CFG.features.SolarHeater)
       };
     }
 
     function extractCondition(map, features) {
-      var raw = clean(map["מצב הנכס"] || "");
+      var raw = "";
+      var keys = CFG.labels.detailsCondition || [];
+      for (var i = 0; i < keys.length; i++) {
+        raw = clean(map[keys[i]] || "");
+        if (raw) break;
+      }
 
-      if (raw === "חדש מקבלן") return "חדש מקבלן";
-      if (raw === "חדש - עד 10 שנים") return "חדש - עד 10 שנים";
-      if (raw === "משופץ ב-5 שנים האחרונים") return "משופץ ב-5 שנים האחרונים";
-      if (raw === "במצב שמור") return "במצב שמור";
-      if (raw === "דרוש שיפוץ") return "דרוש שיפוץ";
-
-      if (!raw && features.Renovated) return "משופץ ב-5 שנים האחרונים";
-      if (raw === "משופץ") return "משופץ ב-5 שנים האחרונים";
-
+      if (CFG.conditionMap[raw]) return CFG.conditionMap[raw];
+      if (!raw && features.Renovated) return CFG.conditionMap["משופץ"] || null;
       return raw || null;
     }
 
@@ -757,7 +708,10 @@
         Floors: Floors
       });
 
-      var td = extractTitleAndDescription();
+      var td = {
+        Title: getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null,
+        Description: getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null
+      };
       var addr = extractAddressSplit();
       var imgs = extractImages();
       var contacts = extractContactsUnified();
@@ -767,18 +721,7 @@
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
-      if (DEBUG) console.log({
-        num: num,
-        td: td,
-        addr: addr,
-        imgs: imgs,
-        contacts: contacts,
-        flags: flags,
-        features: features,
-        condition: condition,
-        publishedRaw: publishedRaw,
-        publishedIso: publishedIso
-      });
+      if (DEBUG) console.log({ map: map, features: features, condition: condition, config: CFG });
 
       return {
         URL: getCleanItemUrl(),
@@ -830,11 +773,11 @@
 
     async function upsertToMemento(v) {
       var TOKEN = await getToken();
-
       var fields = [];
+
       function add(id, val) {
-        if (id === null || id === undefined) return;
-        if (val === null || val === undefined) return;
+        if (id == null) return;
+        if (val == null) return;
         if (typeof val === "string" && !val.trim()) return;
         if (Array.isArray(val) && !val.length) return;
         fields.push({ id: id, value: val });
@@ -891,7 +834,7 @@
       var existingId = null;
       (list.entries || []).some(function (e) {
         var f = (e.fields || []).find(function (x) { return x.id === FID.URL; });
-        if ((f && f.value ? f.value : "").toString().trim() === v.URL) {
+        if (String((f && f.value) || "").trim() === v.URL) {
           existingId = e.id;
           return true;
         }
@@ -904,12 +847,12 @@
         var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries/" + encodeURIComponent(existingId) + "?token=" + encodeURIComponent(TOKEN);
         await jfetch(putUrl, { method: "PUT", body: body });
-        alert("✅ Updated | Created:" + (v.Created ? "OK" : "-") + " | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Updated");
       } else {
         var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries?token=" + encodeURIComponent(TOKEN);
         await jfetch(postUrl, { method: "POST", body: body });
-        alert("✅ Created | Created:" + (v.Created ? "OK" : "-") + " | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Created");
       }
     }
 
