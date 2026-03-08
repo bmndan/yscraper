@@ -35,11 +35,13 @@
     "Accessibility": 53,
     "Bars": 54,
     "Furnished": 55,
+    "StartPrice": 56,
     "Condition": 57,
     "SolarHeater": 58,
     "PrevDescription": 59,
     "PrevPrice": 60,
-    "Image_URLs_All": 61
+    "Image_URLs_All": 61,
+    "Listing_ID": 62
   },
   "labels": {
     "featureSection": "מה יש בנכס",
