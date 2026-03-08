@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Image Test
 // @namespace    berman
-// @version      1.0
+// @version      1.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_getValue
@@ -237,6 +237,7 @@
       if (id == null) return;
       if (val == null) return;
       if (typeof val === "string" && !val.trim()) return;
+      if (Array.isArray(val) && !val.length) return;
       fields.push({ id: id, value: val });
     }
 
@@ -245,13 +246,11 @@
     add(FID.Image_URL_First, imgs.Image_URL_First);
 
     if (imgs.Image_URL_First) {
-      add(FID.Image_Main, [{ url: imgs.Image_URL_First }]);
+      add(FID.Image_Main, imgs.Image_URL_First);
     }
 
     if (imgs.Gallery_List && imgs.Gallery_List.length) {
-      add(FID.Image_Gallery, imgs.Gallery_List.map(function (u) {
-        return { url: u };
-      }));
+      add(FID.Image_Gallery, imgs.Gallery_List);
     }
 
     var body = JSON.stringify({ fields: fields });
