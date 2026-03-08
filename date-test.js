@@ -22,7 +22,7 @@
 
   var FID = {
     URL: 0,
-    Published: 41
+    Published: 43
   };
 
   function clean(s) {
