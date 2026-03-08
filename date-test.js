@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Date Test
 // @namespace    berman
-// @version      1.0
+// @version      1.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_getValue
@@ -22,7 +22,7 @@
 
   var FID = {
     URL: 0,
-    CreatedDate: 1
+    Published: 41
   };
 
   function clean(s) {
@@ -211,16 +211,12 @@
     var rawDate = getDateText();
     var isoDate = parseDateToIsoWithOffset(rawDate);
 
-    if (!rawDate) {
-      throw new Error("Date text not found");
-    }
-    if (!isoDate) {
-      throw new Error("Could not parse date: " + rawDate);
-    }
+    if (!rawDate) throw new Error("Date text not found");
+    if (!isoDate) throw new Error("Could not parse date: " + rawDate);
 
     var fields = [
       { id: FID.URL, value: location.href },
-      { id: FID.CreatedDate, value: isoDate }
+      { id: FID.Published, value: isoDate }
     ];
 
     var body = JSON.stringify({ fields: fields });
