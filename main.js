@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.3
+// @version      4.7.4
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -129,9 +129,11 @@
       var add = clean(line || "");
       if (!add) return cur || null;
 
-      var parts = separator === "\n" ? splitLines(cur) : String(cur || "").split(separator).map(clean).filter(Boolean);
-      if (parts.indexOf(add) !== -1) return cur || null;
+      var parts = separator === "\n"
+        ? splitLines(cur)
+        : String(cur || "").split(separator).map(clean).filter(Boolean);
 
+      if (parts.indexOf(add) !== -1) return cur || null;
       return cur ? cur + separator + add : add;
     }
 
@@ -394,12 +396,35 @@
       };
     }
 
-    function extractPriceFallback() {
-      var t = clean((document.body && document.body.innerText) || "");
-      var matches = Array.from(t.matchAll(/₪\s*([\d,]{4,})/g))
-        .map(function (x) { return Number(digits(x[1])); })
-        .filter(function (n) { return isFinite(n) && n > 0; });
-      return matches.length ? Math.max.apply(null, matches) : null;
+    function extractPriceInfo() {
+      function parsePriceText(text) {
+        var nums = String(text || "").match(/[\d,]+\s*₪/g);
+        if (!nums || !nums.length) {
+          return { currentPrice: null, oldDisplayedPrice: null };
+        }
+
+        var values = nums.map(function (x) {
+          return Number(String(x).replace(/[^\d]/g, ""));
+        }).filter(Boolean);
+
+        return {
+          currentPrice: values[0] || null,
+          oldDisplayedPrice: values[1] || null
+        };
+      }
+
+      var roots = [
+        document.querySelector('[data-testid="price"]'),
+        document.querySelector('[class*="price"]'),
+        document.body
+      ].filter(Boolean);
+
+      for (var i = 0; i < roots.length; i++) {
+        var info = parsePriceText(roots[i].innerText || roots[i].textContent || "");
+        if (info.currentPrice) return info;
+      }
+
+      return { currentPrice: null, oldDisplayedPrice: null };
     }
 
     function extractImages() {
@@ -876,15 +901,24 @@
       var condition = extractCondition(map, features);
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
+      var priceInfo = extractPriceInfo();
 
-      if (DEBUG) console.log({ map: map, features: features, condition: condition, config: CFG, images: imgs });
+      if (DEBUG) console.log({
+        map: map,
+        features: features,
+        condition: condition,
+        config: CFG,
+        images: imgs,
+        priceInfo: priceInfo
+      });
 
       return {
         URL: getCleanItemUrl(),
         Listing_ID: getListingIdFromUrl(),
         Created: getNowIsoWithOffset(),
         Published: publishedIso,
-        Price: extractPriceFallback(),
+        Price: priceInfo.currentPrice,
+        OldDisplayedPrice: priceInfo.oldDisplayedPrice,
 
         Rooms: num.Rooms,
         Floor: num.Floor,
@@ -969,9 +1003,10 @@
         var existingMain = extractFieldValue(existingEntry, FID.Image_Main);
         var existingGallery = extractFieldValue(existingEntry, FID.Image_Gallery);
 
-        finalValues.StartPrice = existingStartPrice != null && String(existingStartPrice).trim() !== ""
-          ? existingStartPrice
-          : v.Price;
+        finalValues.StartPrice =
+          existingStartPrice != null && String(existingStartPrice).trim() !== ""
+            ? existingStartPrice
+            : (v.OldDisplayedPrice || v.Price);
 
         if (
           existingPrice != null &&
@@ -985,6 +1020,17 @@
           );
         } else {
           finalValues.PrevPrice = existingPrevPrice || null;
+        }
+
+        if (
+          v.OldDisplayedPrice != null &&
+          String(v.OldDisplayedPrice) !== String(v.Price)
+        ) {
+          finalValues.PrevPrice = appendHistoryLine(
+            finalValues.PrevPrice,
+            todayStamp() + " | " + v.OldDisplayedPrice,
+            "\n"
+          );
         }
 
         if (
@@ -1010,8 +1056,11 @@
 
         finalValues.Image_URLs_All = mergedAllImages.join("\n") || null;
       } else {
-        finalValues.StartPrice = v.Price;
-        finalValues.PrevPrice = null;
+        finalValues.StartPrice = v.OldDisplayedPrice || v.Price;
+        finalValues.PrevPrice =
+          (v.OldDisplayedPrice != null && String(v.OldDisplayedPrice) !== String(v.Price))
+            ? (todayStamp() + " | " + v.OldDisplayedPrice)
+            : null;
         finalValues.PrevDescription = null;
         finalValues.Image_URLs_All = uniqueStrings(v.Image_URLs_All_New || []).join("\n") || null;
       }
