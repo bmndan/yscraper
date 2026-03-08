@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Y2 Features Test
+// @name         Y2 Attributes Test
 // @namespace    berman
-// @version      1.2
+// @version      1.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_getValue
@@ -20,16 +20,20 @@
 
   var FID = {
     URL: 0,
-    Elevator: 48,
-    Terrace: 49,
-    AC: 50,
-    Storage: 51,
-    Renovated: 52,
-    Accessibility: 53,
-    Bars: 54,
-    Furnished: 55,
-    Condition: 57,
-    SolarHeater: 58
+    Broker: 33,          // מתווך
+    Exclusive: 34,       // בלעדי
+    Shelter: 36,         // ממד
+    Parking: 47,         // חניה
+    Elevator: 48,        // מעלית
+    Terrace: 49,         // מרפסת
+    AC: 50,              // מיזוג
+    Storage: 51,         // מחסן
+    Renovated: 52,       // משופצת
+    Accessibility: 53,   // גישה לנכים
+    Bars: 54,            // סורגים
+    Furnished: 55,       // מרוהטת
+    Condition: 57,       // מצב
+    SolarHeater: 58      // דוד שמש
   };
 
   function clean(s) {
@@ -119,6 +123,14 @@
     return btn;
   }
 
+  function asNum(x) {
+    if (x === 0) return 0;
+    var d = String(x || "").replace(/[^\d]/g, "");
+    if (!d) return null;
+    var n = Number(d);
+    return isFinite(n) ? n : null;
+  }
+
   function extractAdditionalDetailsMap() {
     var labels = Array.from(document.querySelectorAll('[class*="item-detail_label"]'));
     var values = Array.from(document.querySelectorAll('[class*="item-detail_value"]'));
@@ -129,6 +141,47 @@
       if (k) map[k] = v;
     }
     return map;
+  }
+
+  function extractTagsText() {
+    var tagsRoot =
+      document.querySelector('[class*="tags_tagsBox"]') ||
+      document.querySelector('[class*="tags"]') ||
+      document.querySelector('[data-testid="tags"]') ||
+      document;
+
+    var texts = Array.from(tagsRoot.querySelectorAll("*"))
+      .map(function (el) { return clean(el.textContent); })
+      .filter(Boolean);
+
+    return texts.join(" | ");
+  }
+
+  function extractTagsFlags() {
+    var allText = extractTagsText();
+
+    var isExclusive = /(^|\W)בלעדי($|\W)/.test(allText);
+    var hasShelter = /(^|\W)ממ[״"]?ד($|\W)/.test(allText);
+
+    var hasAgencyUi =
+      !!document.querySelector('[data-testid="agency-details"]') ||
+      !!document.querySelector('[class*="agency-details_"]') ||
+      !!document.querySelector('[data-testid="agency-ad-contact-info-name"]') ||
+      !!document.querySelector('[class*="agency-ad-contact-info_name"]') ||
+      !!document.querySelector(".forsale-agency-contact-section_agencyAdContactsBox") ||
+      !!document.querySelector('[class*="forsale-agency-contact-section_agencyAdContactsBox"]');
+
+    var hasOwnerUi =
+      !!document.querySelector(".forsale-contact-section_adContactsBox") ||
+      !!document.querySelector('[class*="forsale-contact-section_adContactsBox"]');
+
+    var isBroker = hasAgencyUi || (!hasOwnerUi && isExclusive);
+
+    return {
+      Broker: !!isBroker,
+      Exclusive: !!isExclusive,
+      Shelter: !!hasShelter
+    };
   }
 
   function extractActiveFeatureMap() {
@@ -206,7 +259,7 @@
     return map;
   }
 
-  function extractPropertyFeatures() {
+  function extractPropertyFeatures(map) {
     var active = extractActiveFeatureMap();
 
     function has(label) {
@@ -214,6 +267,7 @@
     }
 
     return {
+      Parking: (asNum(map["חניות"]) || 0) > 0 || has("חניה"),
       Elevator: has("מעלית"),
       Terrace: has("מרפסת"),
       AC: has("מיזוג"),
@@ -234,14 +288,16 @@
     return raw || null;
   }
 
-  async function testFeaturesOnly() {
+  async function testAllAttributes() {
     var TOKEN = await getToken();
     var map = extractAdditionalDetailsMap();
+    var tagFlags = extractTagsFlags();
     var activeMap = extractActiveFeatureMap();
-    var features = extractPropertyFeatures();
+    var features = extractPropertyFeatures(map);
     var condition = extractCondition(map, features);
 
     console.log("details map", map);
+    console.log("tag flags", tagFlags);
     console.log("active features", activeMap);
     console.log("parsed features", features);
     console.log("condition", condition);
@@ -255,6 +311,11 @@
     }
 
     add(FID.URL, getCleanItemUrl());
+    add(FID.Broker, tagFlags.Broker);
+    add(FID.Exclusive, tagFlags.Exclusive);
+    add(FID.Shelter, tagFlags.Shelter);
+
+    add(FID.Parking, features.Parking);
     add(FID.Elevator, features.Elevator);
     add(FID.Terrace, features.Terrace);
     add(FID.AC, features.AC);
@@ -264,6 +325,7 @@
     add(FID.Bars, features.Bars);
     add(FID.Furnished, features.Furnished);
     add(FID.SolarHeater, features.SolarHeater);
+
     add(FID.Condition, condition);
 
     var body = JSON.stringify({ fields: fields });
@@ -275,7 +337,8 @@
 
     alert(
       "✅ Created\n\n" +
-      "Active features:\n" + JSON.stringify(activeMap, null, 2) +
+      "Tag flags:\n" + JSON.stringify(tagFlags, null, 2) +
+      "\n\nActive features:\n" + JSON.stringify(activeMap, null, 2) +
       "\n\nParsed features:\n" + JSON.stringify(features, null, 2) +
       "\n\nCondition:\n" + String(condition) +
       "\n\nResponse:\n" + JSON.stringify(result, null, 2)
@@ -285,8 +348,8 @@
   if (!onStoredDomain()) return;
   if (!/\/realestate\/item\//.test(location.pathname)) return;
 
-  makeUiButton("y2FeaturesTestBtn", "TEST FEATURES", 16, function () {
-    testFeaturesOnly().catch(function (e) {
+  makeUiButton("y2AttributesTestBtn", "TEST ATTRIBUTES", 16, function () {
+    testAllAttributes().catch(function (e) {
       console.error(e);
       alert("❌ " + (e && e.message ? e.message : e));
     });
