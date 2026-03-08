@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.3.0
+// @version      4.4.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -41,9 +41,12 @@
       BuiltArea: 24,
       Name2: 27,
       Phone2: 28,
+      Broker: 33,          // מתווך
+      Exclusive: 34,       // בלעדי
+      Shelter: 36,         // ממד
       Image_Gallery: 37,   // גלריה
-      Created: 42,         // נוצר (Date)
-      Published: 43        // פורסם (DateTime)
+      Created: 42,         // נוצר (DateTime)
+      Published: 43        // פורסם (DateTime / Date)
     };
 
     function clean(s) {
@@ -75,10 +78,25 @@
       return location.origin + location.pathname;
     }
 
-    function getTodayLocalDate() {
+    function getNowIsoWithOffset() {
       var d = new Date();
-      function pad(n) { return String(n).padStart(2, "0"); }
-      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+
+      function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
+
+      var offsetMin = -d.getTimezoneOffset();
+      var sign = offsetMin >= 0 ? "+" : "-";
+      var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
+      var mm = pad(Math.abs(offsetMin) % 60);
+
+      return (
+        d.getFullYear() + "-" +
+        pad(d.getMonth() + 1) + "-" +
+        pad(d.getDate()) + "T" +
+        pad(d.getHours()) + ":" +
+        pad(d.getMinutes()) + ":" +
+        pad(d.getSeconds()) +
+        sign + hh + ":" + mm
+      );
     }
 
     function getToken() {
@@ -573,6 +591,43 @@
       );
     }
 
+    function extractTagsFlags() {
+      var tagsRoot =
+        document.querySelector('[class*="tags_tagsBox"]') ||
+        document.querySelector('[class*="tags"]') ||
+        document.querySelector('[data-testid="tags"]') ||
+        document;
+
+      var texts = Array.from(tagsRoot.querySelectorAll("*"))
+        .map(function (el) { return clean(el.textContent); })
+        .filter(Boolean);
+
+      var allText = texts.join(" | ");
+
+      var isExclusive = /(^|\W)בלעדי($|\W)/.test(allText);
+      var hasShelter = /(^|\W)ממ[״"]?ד($|\W)/.test(allText);
+
+      var hasAgencyUi =
+        !!document.querySelector('[data-testid="agency-details"]') ||
+        !!document.querySelector('[class*="agency-details_"]') ||
+        !!document.querySelector('[data-testid="agency-ad-contact-info-name"]') ||
+        !!document.querySelector('[class*="agency-ad-contact-info_name"]') ||
+        !!document.querySelector(".forsale-agency-contact-section_agencyAdContactsBox") ||
+        !!document.querySelector('[class*="forsale-agency-contact-section_agencyAdContactsBox"]');
+
+      var hasOwnerUi =
+        !!document.querySelector(".forsale-contact-section_adContactsBox") ||
+        !!document.querySelector('[class*="forsale-contact-section_adContactsBox"]');
+
+      var isBroker = hasAgencyUi || (!hasOwnerUi && isExclusive);
+
+      return {
+        Broker: !!isBroker,
+        Exclusive: !!isExclusive,
+        Shelter: !!hasShelter
+      };
+    }
+
     async function extractAll() {
       for (var i = 0; i < 120; i++) {
         var ok = !!(document.querySelector('[data-testid="building-details"]') || document.querySelector("[class*='buildingDetailsBox']"));
@@ -605,6 +660,7 @@
       var addr = extractAddressSplit();
       var imgs = extractImages();
       var contacts = extractContactsUnified();
+      var flags = extractTagsFlags();
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
@@ -614,13 +670,14 @@
         addr: addr,
         imgs: imgs,
         contacts: contacts,
+        flags: flags,
         publishedRaw: publishedRaw,
         publishedIso: publishedIso
       });
 
       return {
         URL: getCleanItemUrl(),
-        Created: getTodayLocalDate(),
+        Created: getNowIsoWithOffset(),
         Published: publishedIso,
         Price: extractPriceFallback(),
 
@@ -645,7 +702,11 @@
         Name: contacts.Name,
         Phone: contacts.Phone,
         Name2: contacts.Name2,
-        Phone2: contacts.Phone2
+        Phone2: contacts.Phone2,
+
+        Broker: flags.Broker,
+        Exclusive: flags.Exclusive,
+        Shelter: flags.Shelter
       };
     }
 
@@ -687,6 +748,10 @@
       add(FID.Phone, v.Phone);
       add(FID.Name2, v.Name2);
       add(FID.Phone2, v.Phone2);
+
+      add(FID.Broker, v.Broker);
+      add(FID.Exclusive, v.Exclusive);
+      add(FID.Shelter, v.Shelter);
 
       var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
         "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
