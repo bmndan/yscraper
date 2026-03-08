@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.4.0
+// @version      4.5.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -45,8 +45,18 @@
       Exclusive: 34,       // בלעדי
       Shelter: 36,         // ממד
       Image_Gallery: 37,   // גלריה
-      Created: 42,         // נוצר (DateTime)
-      Published: 43        // פורסם (DateTime / Date)
+      Created: 42,         // נוצר
+      Published: 43,       // פורסם
+      Parking: 47,         // חניה
+      Elevator: 48,        // מעלית
+      Terrace: 49,         // מרפסת
+      AC: 50,              // מיזוג
+      Storage: 51,         // מחסן
+      Renovated: 52,       // משופצת
+      Accessibility: 53,   // גישה לנכים
+      Bars: 54,            // סורגים
+      Furnished: 55,       // מרוהטת
+      Condition: 57        // מצב
     };
 
     function clean(s) {
@@ -591,7 +601,7 @@
       );
     }
 
-    function extractTagsFlags() {
+    function extractTagsText() {
       var tagsRoot =
         document.querySelector('[class*="tags_tagsBox"]') ||
         document.querySelector('[class*="tags"]') ||
@@ -602,7 +612,11 @@
         .map(function (el) { return clean(el.textContent); })
         .filter(Boolean);
 
-      var allText = texts.join(" | ");
+      return texts.join(" | ");
+    }
+
+    function extractTagsFlags() {
+      var allText = extractTagsText();
 
       var isExclusive = /(^|\W)בלעדי($|\W)/.test(allText);
       var hasShelter = /(^|\W)ממ[״"]?ד($|\W)/.test(allText);
@@ -626,6 +640,38 @@
         Exclusive: !!isExclusive,
         Shelter: !!hasShelter
       };
+    }
+
+    function extractPropertyFeatures() {
+      var allText = extractTagsText();
+
+      function has(label) {
+        return allText.indexOf(label) !== -1;
+      }
+
+      return {
+        Parking: has("חניה"),
+        Elevator: has("מעלית"),
+        Terrace: has("מרפסת"),
+        AC: has("מיזוג"),
+        Storage: has("מחסן"),
+        Renovated: has("משופצת"),
+        Accessibility: has("גישה לנכים"),
+        Bars: has("סורגים"),
+        Furnished: has("מרוהטת")
+      };
+    }
+
+    function extractCondition() {
+      var allText = extractTagsText();
+
+      if (allText.indexOf("חדש מקבלן") !== -1) return "חדש מקבלן";
+      if (allText.indexOf("חדש - עד 10 שנים") !== -1) return "חדש - עד 10 שנים";
+      if (allText.indexOf("משופץ ב-5 שנים האחרונות") !== -1) return "משופץ ב-5 שנים האחרונות";
+      if (allText.indexOf("במצב שמור") !== -1) return "במצב שמור";
+      if (allText.indexOf("דרוש שיפוץ") !== -1) return "דרוש שיפוץ";
+
+      return null;
     }
 
     async function extractAll() {
@@ -661,6 +707,8 @@
       var imgs = extractImages();
       var contacts = extractContactsUnified();
       var flags = extractTagsFlags();
+      var features = extractPropertyFeatures();
+      var condition = extractCondition();
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
@@ -671,6 +719,8 @@
         imgs: imgs,
         contacts: contacts,
         flags: flags,
+        features: features,
+        condition: condition,
         publishedRaw: publishedRaw,
         publishedIso: publishedIso
       });
@@ -706,7 +756,19 @@
 
         Broker: flags.Broker,
         Exclusive: flags.Exclusive,
-        Shelter: flags.Shelter
+        Shelter: flags.Shelter,
+
+        Parking: features.Parking,
+        Elevator: features.Elevator,
+        Terrace: features.Terrace,
+        AC: features.AC,
+        Storage: features.Storage,
+        Renovated: features.Renovated,
+        Accessibility: features.Accessibility,
+        Bars: features.Bars,
+        Furnished: features.Furnished,
+
+        Condition: condition
       };
     }
 
@@ -752,6 +814,18 @@
       add(FID.Broker, v.Broker);
       add(FID.Exclusive, v.Exclusive);
       add(FID.Shelter, v.Shelter);
+
+      add(FID.Parking, v.Parking);
+      add(FID.Elevator, v.Elevator);
+      add(FID.Terrace, v.Terrace);
+      add(FID.AC, v.AC);
+      add(FID.Storage, v.Storage);
+      add(FID.Renovated, v.Renovated);
+      add(FID.Accessibility, v.Accessibility);
+      add(FID.Bars, v.Bars);
+      add(FID.Furnished, v.Furnished);
+
+      add(FID.Condition, v.Condition);
 
       var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
         "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
