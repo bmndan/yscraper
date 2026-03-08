@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.5.2
+// @version      4.5.3
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -643,24 +643,61 @@
       };
     }
 
-    function extractFeatureList() {
-      var bodyText = (document.body && document.body.innerText) || "";
-      var m = bodyText.match(/מה יש בנכס([\s\S]*?)(?:הדרך לבית שלכם מתחילה כאן|דווח על מודעה|$)/);
-      if (!m) return [];
+    function extractActiveFeatureMap() {
+      var root =
+        document.querySelector('[class*="tags_tagsBox"]') ||
+        document.querySelector('[data-testid="tags"]') ||
+        document;
 
-      return m[1]
-        .split(/\n+/)
-        .map(function (x) { return clean(x); })
-        .filter(Boolean);
+      var map = {};
+
+      function isInactive(el) {
+        if (!el) return false;
+
+        var chain = [el];
+        var p = el.parentElement;
+        while (p && chain.length < 4) {
+          chain.push(p);
+          p = p.parentElement;
+        }
+
+        return chain.some(function (node) {
+          var cls = String(node.className || "");
+          var cs = window.getComputedStyle(node);
+
+          if (node.getAttribute("aria-disabled") === "true") return true;
+          if (/disabled|inactive|muted|grey|gray|off/i.test(cls)) return true;
+          if (cs.display === "none" || cs.visibility === "hidden") return true;
+          if (parseFloat(cs.opacity || "1") < 0.95) return true;
+          if (cs.filter && cs.filter !== "none" && /grayscale/i.test(cs.filter)) return true;
+
+          return false;
+        });
+      }
+
+      var nodes = Array.from(root.querySelectorAll("*"))
+        .filter(function (el) {
+          var txt = clean(el.textContent);
+          if (!txt) return false;
+          if (txt.length > 30) return false;
+          return true;
+        });
+
+      nodes.forEach(function (el) {
+        var txt = clean(el.textContent);
+        if (!txt) return;
+        if (isInactive(el)) return;
+        map[txt] = true;
+      });
+
+      return map;
     }
 
     function extractPropertyFeatures(map) {
-      var items = extractFeatureList();
+      var active = extractActiveFeatureMap();
 
       function has(label) {
-        return items.some(function (x) {
-          return x === label || x.indexOf(label) !== -1;
-        });
+        return !!active[label];
       }
 
       return {
@@ -680,7 +717,15 @@
     function extractCondition(map, features) {
       var raw = clean(map["מצב הנכס"] || "");
 
-      if (!raw && features.Renovated) return "משופץ";
+      if (raw === "חדש מקבלן") return "חדש מקבלן";
+      if (raw === "חדש - עד 10 שנים") return "חדש - עד 10 שנים";
+      if (raw === "משופץ ב-5 שנים האחרונים") return "משופץ ב-5 שנים האחרונים";
+      if (raw === "במצב שמור") return "במצב שמור";
+      if (raw === "דרוש שיפוץ") return "דרוש שיפוץ";
+
+      if (!raw && features.Renovated) return "משופץ ב-5 שנים האחרונים";
+      if (raw === "משופץ") return "משופץ ב-5 שנים האחרונים";
+
       return raw || null;
     }
 
