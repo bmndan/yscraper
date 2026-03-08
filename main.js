@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.5
+// @version      4.7.6
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -1069,6 +1069,11 @@
         finalValues.Image_URLs_All = uniqueStrings(v.Image_URLs_All_New || []).join("\n") || null;
       }
 
+      finalValues.Discount =
+        finalValues.StartPrice != null &&
+        finalValues.Price != null &&
+        Number(finalValues.StartPrice) > Number(finalValues.Price);
+
       var fields = [];
       function add(id, val) {
         if (id == null) return;
@@ -1090,6 +1095,7 @@
       add(FID.Price, finalValues.Price);
       add(FID.StartPrice, finalValues.StartPrice);
       add(FID.PrevPrice, finalValues.PrevPrice);
+      add(FID.Discount, finalValues.Discount);
 
       add(FID.Rooms, finalValues.Rooms);
       add(FID.Floor, finalValues.Floor);
