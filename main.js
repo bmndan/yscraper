@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.1.1
+// @version      4.1.2
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -328,7 +328,9 @@
     }
 
     function extractImages() {
-      function uniq(arr) { return Array.from(new Set(arr)); }
+      function uniq(arr) {
+        return Array.from(new Set(arr));
+      }
       function toAbsHttps(u) {
         if (!u) return "";
         u = u.trim();
@@ -354,12 +356,11 @@
         null;
 
       var root = gallery || document;
-      var nodes = Array.from(root.querySelectorAll('[data-testid="image"], [data-testid="image"] img, picture img, img, source, meta[property="og:image"]'));
+      var nodes = Array.from(root.querySelectorAll('[data-testid="image"], [data-testid="image"] img, picture img, img, source'));
 
       var urls = [];
       nodes.forEach(function (n) {
         var tag = (n.tagName || "").toLowerCase();
-
         if (tag === "img") {
           var u1 = n.currentSrc || n.src || "";
           var u2 = n.getAttribute("data-src") || "";
@@ -372,9 +373,6 @@
           var u = fromSrcset(n.getAttribute("srcset") || "");
           var abs2 = toAbsHttps(u);
           if (abs2) urls.push(abs2);
-        } else if (tag === "meta") {
-          var m = toAbsHttps(n.getAttribute("content") || "");
-          if (m) urls.push(m);
         }
       });
 
@@ -556,7 +554,7 @@
       if (DEBUG) console.log({ num: num, td: td, addr: addr, imgs: imgs, contacts: contacts });
 
       return {
-        URL: location.href.split("?")[0],
+        URL: location.href,
         Price: extractPriceFallback(),
 
         Rooms: num.Rooms,
