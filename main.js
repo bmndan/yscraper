@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.4
+// @version      4.7.5
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -397,34 +397,36 @@
     }
 
     function extractPriceInfo() {
-      function parsePriceText(text) {
-        var nums = String(text || "").match(/[\d,]+\s*₪/g);
-        if (!nums || !nums.length) {
-          return { currentPrice: null, oldDisplayedPrice: null };
-        }
+      function parsePriceValue(text) {
+        var m = String(text || "").match(/([\d,]{4,})\s*₪/);
+        return m ? Number(String(m[1]).replace(/[^\d]/g, "")) : null;
+      }
 
+      var currentText =
+        (document.querySelector('[data-testid="current-price"]') || {}).innerText ||
+        "";
+
+      var prevText =
+        (document.querySelector('[data-testid="previous-tagged-price"]') || {}).innerText ||
+        "";
+
+      var currentPrice = parsePriceValue(currentText);
+      var oldDisplayedPrice = parsePriceValue(prevText);
+
+      if (!currentPrice) {
+        var nums = String(document.body.innerText || "").match(/[\d,]{4,}\s*₪/g) || [];
         var values = nums.map(function (x) {
           return Number(String(x).replace(/[^\d]/g, ""));
         }).filter(Boolean);
 
-        return {
-          currentPrice: values[0] || null,
-          oldDisplayedPrice: values[1] || null
-        };
+        currentPrice = values[0] || null;
+        if (!oldDisplayedPrice) oldDisplayedPrice = values[1] || null;
       }
 
-      var roots = [
-        document.querySelector('[data-testid="price"]'),
-        document.querySelector('[class*="price"]'),
-        document.body
-      ].filter(Boolean);
-
-      for (var i = 0; i < roots.length; i++) {
-        var info = parsePriceText(roots[i].innerText || roots[i].textContent || "");
-        if (info.currentPrice) return info;
-      }
-
-      return { currentPrice: null, oldDisplayedPrice: null };
+      return {
+        currentPrice: currentPrice,
+        oldDisplayedPrice: oldDisplayedPrice
+      };
     }
 
     function extractImages() {
@@ -903,14 +905,16 @@
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
       var priceInfo = extractPriceInfo();
 
-      if (DEBUG) console.log({
-        map: map,
-        features: features,
-        condition: condition,
-        config: CFG,
-        images: imgs,
-        priceInfo: priceInfo
-      });
+      if (DEBUG) {
+        console.log({
+          map: map,
+          features: features,
+          condition: condition,
+          config: CFG,
+          images: imgs,
+          priceInfo: priceInfo
+        });
+      }
 
       return {
         URL: getCleanItemUrl(),
