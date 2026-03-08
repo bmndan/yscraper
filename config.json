@@ -36,7 +36,10 @@
     "Bars": 54,
     "Furnished": 55,
     "Condition": 57,
-    "SolarHeater": 58
+    "SolarHeater": 58,
+    "PrevDescription": 59,
+    "PrevPrice": 60,
+    "Image_URLs_All": 61
   },
   "labels": {
     "featureSection": "מה יש בנכס",
