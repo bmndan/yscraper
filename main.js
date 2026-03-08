@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.2
+// @version      4.7.3
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -448,6 +448,34 @@
         return out;
       }
 
+      function imageBaseKey(u) {
+        u = String(u || "").trim();
+        if (!u) return "";
+        return u.split("?")[0];
+      }
+
+      function parseImageScore(u) {
+        u = String(u || "");
+        var mW = u.match(/[?&]w=(\d+)/i);
+        var mH = u.match(/[?&]h=(\d+)/i);
+        var w = mW ? Number(mW[1]) : 0;
+        var h = mH ? Number(mH[1]) : 0;
+        return w * h;
+      }
+
+      function dedupePreferLargest(urls) {
+        var best = {};
+        (urls || []).forEach(function (u) {
+          var key = imageBaseKey(u);
+          if (!key) return;
+          var score = parseImageScore(u);
+          if (!best[key] || score > best[key].score) {
+            best[key] = { url: u, score: score };
+          }
+        });
+        return Object.keys(best).map(function (k) { return best[k].url; });
+      }
+
       var gallery =
         document.querySelector(".ad-item-page-layout_galleryBox__4sXPG") ||
         document.querySelector("[class*='galleryBox']") ||
@@ -476,9 +504,11 @@
 
       var posterUrls = getVideoPosterUrls(root).map(toAbsHttps).filter(Boolean);
 
-      var u = uniq(posterUrls.concat(urls))
-        .filter(function (x) { return !isOverlayAsset(x); })
-        .map(addC6);
+      var u = dedupePreferLargest(
+        uniq(posterUrls.concat(urls))
+          .filter(function (x) { return !isOverlayAsset(x); })
+          .map(addC6)
+      );
 
       return {
         Image_URL_First: u[0] || null,
