@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.6.0
+// @version      4.6.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -302,6 +302,52 @@
         if (k) map[k] = v;
       }
       return map;
+    }
+
+    function extractTitleAndDescription() {
+      var Title = getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null;
+      var Description = getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null;
+      return { Title: Title, Description: Description };
+    }
+
+    function extractAddressSplit() {
+      var AddressRaw = getFirstText([
+        "[data-testid='address']",
+        "[class*='address_address']",
+        "[class*='address']"
+      ]) || null;
+
+      if (!AddressRaw) return { Type: null, Location: null, City: null };
+
+      var s = AddressRaw.trim();
+      var firstComma = s.indexOf(",");
+      var lastComma = s.lastIndexOf(",");
+
+      if (firstComma === -1) {
+        return { Type: s || null, Location: null, City: null };
+      }
+
+      if (firstComma === lastComma) {
+        return {
+          Type: s.slice(0, firstComma).trim() || null,
+          Location: null,
+          City: s.slice(firstComma + 1).trim() || null
+        };
+      }
+
+      return {
+        Type: s.slice(0, firstComma).trim() || null,
+        Location: s.slice(firstComma + 1, lastComma).trim() || null,
+        City: s.slice(lastComma + 1).trim() || null
+      };
+    }
+
+    function extractPriceFallback() {
+      var t = clean((document.body && document.body.innerText) || "");
+      var matches = Array.from(t.matchAll(/₪\s*([\d,]{4,})/g))
+        .map(function (x) { return Number(digits(x[1])); })
+        .filter(function (n) { return isFinite(n) && n > 0; });
+      return matches.length ? Math.max.apply(null, matches) : null;
     }
 
     function extractImages() {
@@ -708,10 +754,7 @@
         Floors: Floors
       });
 
-      var td = {
-        Title: getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null,
-        Description: getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null
-      };
+      var td = extractTitleAndDescription();
       var addr = extractAddressSplit();
       var imgs = extractImages();
       var contacts = extractContactsUnified();
