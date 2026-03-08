@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.6.1
+// @version      4.7.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -100,6 +100,55 @@
         pad(d.getSeconds()) +
         sign + hh + ":" + mm
       );
+    }
+
+    function todayStamp() {
+      var d = new Date();
+      function pad(n) { return String(n).padStart(2, "0"); }
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    }
+
+    function splitLines(s) {
+      return String(s || "")
+        .split(/\r?\n/)
+        .map(function (x) { return clean(x); })
+        .filter(Boolean);
+    }
+
+    function uniqueStrings(arr) {
+      return Array.from(new Set((arr || []).filter(Boolean).map(clean).filter(Boolean)));
+    }
+
+    function appendHistoryLine(existing, line, separator) {
+      var cur = clean(existing || "");
+      var add = clean(line || "");
+      if (!add) return cur || null;
+
+      var parts = separator === "\n" ? splitLines(cur) : String(cur || "").split(separator).map(clean).filter(Boolean);
+      if (parts.indexOf(add) !== -1) return cur || null;
+
+      return cur ? cur + separator + add : add;
+    }
+
+    function extractFieldValue(entry, fieldId) {
+      if (!entry || !entry.fields) return null;
+      var f = entry.fields.find(function (x) { return x.id === fieldId; });
+      return f ? f.value : null;
+    }
+
+    function normalizeImageFieldValue(v) {
+      if (!v) return [];
+      if (Array.isArray(v)) {
+        return v.map(function (x) {
+          if (typeof x === "string") return clean(x);
+          if (x && typeof x === "object") {
+            return clean(x.url || x.value || x.path || "");
+          }
+          return "";
+        }).filter(Boolean);
+      }
+      if (typeof v === "string") return splitLines(v);
+      return [];
     }
 
     function gmGet(url) {
@@ -352,6 +401,7 @@
 
     function extractImages() {
       function uniq(arr) { return Array.from(new Set(arr)); }
+
       function toAbsHttps(u) {
         if (!u) return "";
         u = u.trim();
@@ -360,15 +410,43 @@
         if (u.indexOf("/") === 0) return location.origin + u;
         return u;
       }
+
       function fromSrcset(srcset) {
         if (!srcset) return "";
         var parts = srcset.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
         var last = parts[parts.length - 1] || "";
         return (last.split(" ")[0] || "");
       }
+
       function addC6(u) {
         if (!u) return u;
         return u.indexOf("c=6") !== -1 ? u : (u.indexOf("?") !== -1 ? u + "&c=6" : u + "?c=6");
+      }
+
+      function isOverlayAsset(u) {
+        u = String(u || "").toLowerCase();
+        return (
+          !u ||
+          u.indexOf("/gallery/play.png") !== -1 ||
+          u.endsWith("/play.png")
+        );
+      }
+
+      function getVideoPosterUrls(root) {
+        var out = [];
+
+        Array.from(root.querySelectorAll("video")).forEach(function (v) {
+          var p = v.getAttribute("poster") || "";
+          if (p) out.push(p);
+        });
+
+        Array.from(root.querySelectorAll('[style*="background-image"]')).forEach(function (el) {
+          var s = el.getAttribute("style") || "";
+          var m = s.match(/background-image:\s*url\((['"]?)(.*?)\1\)/i);
+          if (m && m[2]) out.push(m[2]);
+        });
+
+        return out;
       }
 
       var gallery =
@@ -397,10 +475,16 @@
         }
       });
 
-      var u = uniq(urls).map(addC6);
+      var posterUrls = getVideoPosterUrls(root).map(toAbsHttps).filter(Boolean);
+
+      var u = uniq(posterUrls.concat(urls))
+        .filter(function (x) { return !isOverlayAsset(x); })
+        .map(addC6);
+
       return {
         Image_URL_First: u[0] || null,
         Gallery_List: u.slice(1),
+        All_Image_URLs: u,
         imgCount: u.length
       };
     }
@@ -764,7 +848,7 @@
       var publishedRaw = getDateText();
       var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
-      if (DEBUG) console.log({ map: map, features: features, condition: condition, config: CFG });
+      if (DEBUG) console.log({ map: map, features: features, condition: condition, config: CFG, images: imgs });
 
       return {
         URL: getCleanItemUrl(),
@@ -787,6 +871,7 @@
 
         Image_Main: imgs.Image_URL_First,
         Image_Gallery: imgs.Gallery_List,
+        Image_URLs_All_New: imgs.All_Image_URLs,
         imgCount: imgs.imgCount,
 
         Agency: contacts.Agency,
@@ -816,8 +901,74 @@
 
     async function upsertToMemento(v) {
       var TOKEN = await getToken();
-      var fields = [];
+      var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+        "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
+      var list = await jfetch(listUrl, { method: "GET" });
 
+      var existingEntry = null;
+      (list.entries || []).some(function (e) {
+        var f = (e.fields || []).find(function (x) { return x.id === FID.URL; });
+        if (String((f && f.value) || "").trim() === v.URL) {
+          existingEntry = e;
+          return true;
+        }
+        return false;
+      });
+
+      var finalValues = Object.assign({}, v);
+
+      if (existingEntry) {
+        var existingPrice = extractFieldValue(existingEntry, FID.Price);
+        var existingPrevPrice = extractFieldValue(existingEntry, FID.PrevPrice);
+        var existingDesc = extractFieldValue(existingEntry, FID.Description);
+        var existingPrevDesc = extractFieldValue(existingEntry, FID.PrevDescription);
+        var existingAllImages = extractFieldValue(existingEntry, FID.Image_URLs_All);
+        var existingMain = extractFieldValue(existingEntry, FID.Image_Main);
+        var existingGallery = extractFieldValue(existingEntry, FID.Image_Gallery);
+
+        if (
+          existingPrice != null &&
+          v.Price != null &&
+          String(existingPrice) !== String(v.Price)
+        ) {
+          finalValues.PrevPrice = appendHistoryLine(
+            existingPrevPrice,
+            todayStamp() + " | " + existingPrice,
+            "\n"
+          );
+        } else {
+          finalValues.PrevPrice = existingPrevPrice || null;
+        }
+
+        if (
+          clean(existingDesc || "") &&
+          clean(v.Description || "") &&
+          clean(existingDesc || "") !== clean(v.Description || "")
+        ) {
+          finalValues.PrevDescription = appendHistoryLine(
+            existingPrevDesc,
+            todayStamp() + " | " + clean(existingDesc),
+            "\n----\n"
+          );
+        } else {
+          finalValues.PrevDescription = existingPrevDesc || null;
+        }
+
+        var mergedAllImages = uniqueStrings(
+          splitLines(existingAllImages)
+            .concat(normalizeImageFieldValue(existingMain))
+            .concat(normalizeImageFieldValue(existingGallery))
+            .concat(v.Image_URLs_All_New || [])
+        );
+
+        finalValues.Image_URLs_All = mergedAllImages.join("\n") || null;
+      } else {
+        finalValues.PrevPrice = null;
+        finalValues.PrevDescription = null;
+        finalValues.Image_URLs_All = uniqueStrings(v.Image_URLs_All_New || []).join("\n") || null;
+      }
+
+      var fields = [];
       function add(id, val) {
         if (id == null) return;
         if (val == null) return;
@@ -826,69 +977,59 @@
         fields.push({ id: id, value: val });
       }
 
-      add(FID.URL, v.URL);
-      add(FID.Created, v.Created);
-      add(FID.Published, v.Published);
+      add(FID.URL, finalValues.URL);
+      add(FID.Created, finalValues.Created);
+      add(FID.Published, finalValues.Published);
 
-      if (v.Image_Main) add(FID.Image_Main, v.Image_Main);
-      if (v.Image_Gallery && v.Image_Gallery.length) add(FID.Image_Gallery, v.Image_Gallery);
+      if (finalValues.Image_Main) add(FID.Image_Main, finalValues.Image_Main);
+      if (finalValues.Image_Gallery && finalValues.Image_Gallery.length) add(FID.Image_Gallery, finalValues.Image_Gallery);
+      add(FID.Image_URLs_All, finalValues.Image_URLs_All);
 
-      add(FID.Price, v.Price);
-      add(FID.Rooms, v.Rooms);
-      add(FID.Floor, v.Floor);
-      add(FID.Area, v.Area);
-      add(FID.Floors, v.Floors);
-      add(FID.BuiltArea, v.BuiltArea);
+      add(FID.Price, finalValues.Price);
+      add(FID.PrevPrice, finalValues.PrevPrice);
 
-      add(FID.Title, v.Title);
-      add(FID.Description, v.Description);
+      add(FID.Rooms, finalValues.Rooms);
+      add(FID.Floor, finalValues.Floor);
+      add(FID.Area, finalValues.Area);
+      add(FID.Floors, finalValues.Floors);
+      add(FID.BuiltArea, finalValues.BuiltArea);
 
-      add(FID.Type, v.Type);
-      add(FID.Location, v.Location);
-      add(FID.City, v.City);
+      add(FID.Title, finalValues.Title);
+      add(FID.Description, finalValues.Description);
+      add(FID.PrevDescription, finalValues.PrevDescription);
 
-      add(FID.Agency, v.Agency);
-      add(FID.Name, v.Name);
-      add(FID.Phone, v.Phone);
-      add(FID.Name2, v.Name2);
-      add(FID.Phone2, v.Phone2);
+      add(FID.Type, finalValues.Type);
+      add(FID.Location, finalValues.Location);
+      add(FID.City, finalValues.City);
 
-      add(FID.Broker, v.Broker);
-      add(FID.Exclusive, v.Exclusive);
-      add(FID.Shelter, v.Shelter);
+      add(FID.Agency, finalValues.Agency);
+      add(FID.Name, finalValues.Name);
+      add(FID.Phone, finalValues.Phone);
+      add(FID.Name2, finalValues.Name2);
+      add(FID.Phone2, finalValues.Phone2);
 
-      add(FID.Parking, v.Parking);
-      add(FID.Elevator, v.Elevator);
-      add(FID.Terrace, v.Terrace);
-      add(FID.AC, v.AC);
-      add(FID.Storage, v.Storage);
-      add(FID.Renovated, v.Renovated);
-      add(FID.Accessibility, v.Accessibility);
-      add(FID.Bars, v.Bars);
-      add(FID.Furnished, v.Furnished);
-      add(FID.SolarHeater, v.SolarHeater);
+      add(FID.Broker, finalValues.Broker);
+      add(FID.Exclusive, finalValues.Exclusive);
+      add(FID.Shelter, finalValues.Shelter);
 
-      add(FID.Condition, v.Condition);
+      add(FID.Parking, finalValues.Parking);
+      add(FID.Elevator, finalValues.Elevator);
+      add(FID.Terrace, finalValues.Terrace);
+      add(FID.AC, finalValues.AC);
+      add(FID.Storage, finalValues.Storage);
+      add(FID.Renovated, finalValues.Renovated);
+      add(FID.Accessibility, finalValues.Accessibility);
+      add(FID.Bars, finalValues.Bars);
+      add(FID.Furnished, finalValues.Furnished);
+      add(FID.SolarHeater, finalValues.SolarHeater);
 
-      var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
-        "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
-      var list = await jfetch(listUrl, { method: "GET" });
-
-      var existingId = null;
-      (list.entries || []).some(function (e) {
-        var f = (e.fields || []).find(function (x) { return x.id === FID.URL; });
-        if (String((f && f.value) || "").trim() === v.URL) {
-          existingId = e.id;
-          return true;
-        }
-        return false;
-      });
+      add(FID.Condition, finalValues.Condition);
 
       var body = JSON.stringify({ fields: fields });
 
-      if (existingId) {
+      if (existingEntry) {
         var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
-          "/entries/" + encodeURIComponent(existingId) + "?token=" + encodeURIComponent(TOKEN);
+          "/entries/" + encodeURIComponent(existingEntry.id) + "?token=" + encodeURIComponent(TOKEN);
         await jfetch(putUrl, { method: "PUT", body: body });
         alert("✅ Updated");
       } else {
