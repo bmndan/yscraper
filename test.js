@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Test
 // @namespace    bmndan
-// @version      1.6
+// @version      1.7
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_xmlhttpRequest
@@ -10,6 +10,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_listValues
 // @connect      raw.githubusercontent.com
+// @connect      api.mementodatabase.com
 // @downloadURL  https://raw.githubusercontent.com/bmndan/yscraper/main/test.js
 // @updateURL    https://raw.githubusercontent.com/bmndan/yscraper/main/test.js
 // ==/UserScript==
@@ -42,6 +43,12 @@
     GM_deleteValue(DOMAIN_KEY);
   }
 
+  function maskToken(token) {
+    token = clean(token);
+    if (token.length <= 10) return token;
+    return token.slice(0, 6) + '...' + token.slice(-4);
+  }
+
   function getToken() {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
@@ -62,6 +69,22 @@
     });
   }
 
+  function createViaGM(token, payload) {
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: 'POST',
+        url: API,
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(payload),
+        onload: r => resolve(r),
+        onerror: () => reject('Memento request failed')
+      });
+    });
+  }
+
   async function create() {
     const token = await getToken();
     const url = location.href.split('?')[0];
@@ -72,24 +95,17 @@
       ]
     };
 
-    const r = await fetch(API, {
-      method: 'POST',
-      headers: {
-        Authorization: token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const text = await r.text();
+    const r = await createViaGM(token, payload);
 
     alert(
       'Status: ' + r.status +
       '\nToken length: ' + token.length +
+      '\nToken mask: ' + maskToken(token) +
       '\nStored domain: ' + getStoredDomain() +
       '\nCurrent host: ' + location.hostname +
       '\nKeys: ' + GM_listValues().join(', ') +
-      '\n\nResponse:\n' + text
+      '\n\nRequest body:\n' + JSON.stringify(payload, null, 2) +
+      '\n\nResponse:\n' + r.responseText
     );
   }
 
