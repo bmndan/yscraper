@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Y2 Features Test
 // @namespace    berman
-// @version      1.1
+// @version      1.2
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
@@ -37,6 +38,10 @@
       .replace(/\r/g, "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  if (!GM_getValue(DOMAIN_KEY, "")) {
+    GM_setValue(DOMAIN_KEY, location.hostname);
   }
 
   function getStoredDomain() {
@@ -119,8 +124,8 @@
     var values = Array.from(document.querySelectorAll('[class*="item-detail_value"]'));
     var map = {};
     for (var i = 0; i < Math.min(labels.length, values.length); i++) {
-      var k = (labels[i].innerText || labels[i].textContent || "").trim();
-      var v = (values[i].innerText || values[i].textContent || "").trim();
+      var k = clean(labels[i].innerText || labels[i].textContent || "");
+      var v = clean(values[i].innerText || values[i].textContent || "");
       if (k) map[k] = v;
     }
     return map;
@@ -232,11 +237,12 @@
   async function testFeaturesOnly() {
     var TOKEN = await getToken();
     var map = extractAdditionalDetailsMap();
+    var activeMap = extractActiveFeatureMap();
     var features = extractPropertyFeatures();
     var condition = extractCondition(map, features);
 
     console.log("details map", map);
-    console.log("active features", extractActiveFeatureMap());
+    console.log("active features", activeMap);
     console.log("parsed features", features);
     console.log("condition", condition);
 
@@ -269,7 +275,7 @@
 
     alert(
       "✅ Created\n\n" +
-      "Active features:\n" + JSON.stringify(extractActiveFeatureMap(), null, 2) +
+      "Active features:\n" + JSON.stringify(activeMap, null, 2) +
       "\n\nParsed features:\n" + JSON.stringify(features, null, 2) +
       "\n\nCondition:\n" + String(condition) +
       "\n\nResponse:\n" + JSON.stringify(result, null, 2)
