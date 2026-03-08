@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.1.2
+// @version      4.2.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -24,15 +24,12 @@
 
     var FID = {
       URL: 0,
-      CreatedDate: 1, // intentionally skipped for now
-      Images_URLs: 7,
-      Image_URL_First: 8,
+      Image_Main: 4,       // תמונה
       Price: 9,
       Rooms: 10,
       Floor: 11,
       Area: 12,
       Agency: 13,
-
       Name: 14,
       Phone: 15,
       Type: 16,
@@ -42,9 +39,10 @@
       Title: 20,
       Description: 21,
       BuiltArea: 24,
-
       Name2: 27,
-      Phone2: 28
+      Phone2: 28,
+      Image_Gallery: 37,   // גלריה
+      Published: 41        // DateTime
     };
 
     function clean(s) {
@@ -70,6 +68,10 @@
     function onStoredDomain() {
       var d = getStoredDomain();
       return !!d && location.hostname === d;
+    }
+
+    function getCleanItemUrl() {
+      return location.origin + location.pathname;
     }
 
     function getToken() {
@@ -196,6 +198,7 @@
     function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     function norm(s) { return (s || "").toString().replace(/\s+/g, " ").trim(); }
     function digits(s) { return (s || "").toString().replace(/[^\d]/g, ""); }
+
     function asNum(x) {
       if (x === 0) return 0;
       var d = digits(x);
@@ -203,6 +206,7 @@
       var n = Number(d);
       return isFinite(n) ? n : null;
     }
+
     function keepIf(n, pred) {
       return (typeof n === "number" && isFinite(n) && pred(n)) ? n : null;
     }
@@ -378,8 +382,8 @@
 
       var u = uniq(urls).map(addC6);
       return {
-        Images_URLs: u.length ? u.join("\n") : null,
         Image_URL_First: u[0] || null,
+        Gallery_List: u.slice(1),
         imgCount: u.length
       };
     }
@@ -518,6 +522,44 @@
       };
     }
 
+    function getDateText() {
+      var el = document.querySelector('[class*="report-ad_createdAt__"]');
+      if (!el) return null;
+      var m = clean(el.textContent).match(/(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/);
+      return m ? m[0] : null;
+    }
+
+    function parseDateToIsoWithOffset(text) {
+      var m = String(text || '').match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+      if (!m) return null;
+
+      var day = parseInt(m[1], 10);
+      var month = parseInt(m[2], 10);
+      var year = parseInt(m[3], 10);
+      if (year < 100) year += 2000;
+
+      var d = new Date(year, month - 1, day, 0, 0, 0);
+
+      function pad(n) {
+        return String(Math.abs(n)).padStart(2, '0');
+      }
+
+      var offsetMin = -d.getTimezoneOffset();
+      var sign = offsetMin >= 0 ? '+' : '-';
+      var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
+      var mm = pad(Math.abs(offsetMin) % 60);
+
+      return (
+        d.getFullYear() + '-' +
+        pad(d.getMonth() + 1) + '-' +
+        pad(d.getDate()) + 'T' +
+        pad(d.getHours()) + ':' +
+        pad(d.getMinutes()) + ':' +
+        pad(d.getSeconds()) +
+        sign + hh + ':' + mm
+      );
+    }
+
     async function extractAll() {
       for (var i = 0; i < 120; i++) {
         var ok = !!(document.querySelector('[data-testid="building-details"]') || document.querySelector("[class*='buildingDetailsBox']"));
@@ -550,11 +592,22 @@
       var addr = extractAddressSplit();
       var imgs = extractImages();
       var contacts = extractContactsUnified();
+      var publishedRaw = getDateText();
+      var publishedIso = parseDateToIsoWithOffset(publishedRaw);
 
-      if (DEBUG) console.log({ num: num, td: td, addr: addr, imgs: imgs, contacts: contacts });
+      if (DEBUG) console.log({
+        num: num,
+        td: td,
+        addr: addr,
+        imgs: imgs,
+        contacts: contacts,
+        publishedRaw: publishedRaw,
+        publishedIso: publishedIso
+      });
 
       return {
-        URL: location.href,
+        URL: getCleanItemUrl(),
+        Published: publishedIso,
         Price: extractPriceFallback(),
 
         Rooms: num.Rooms,
@@ -570,8 +623,8 @@
         Location: addr.Location,
         City: addr.City,
 
-        Images_URLs: imgs.Images_URLs,
-        Image_URL_First: imgs.Image_URL_First,
+        Image_Main: imgs.Image_URL_First,
+        Image_Gallery: imgs.Gallery_List,
         imgCount: imgs.imgCount,
 
         Agency: contacts.Agency,
@@ -590,12 +643,19 @@
         if (id === null || id === undefined) return;
         if (val === null || val === undefined) return;
         if (typeof val === "string" && !val.trim()) return;
+        if (Array.isArray(val) && !val.length) return;
         fields.push({ id: id, value: val });
       }
 
       add(FID.URL, v.URL);
-      add(FID.Images_URLs, v.Images_URLs);
-      add(FID.Image_URL_First, v.Image_URL_First);
+      add(FID.Published, v.Published);
+
+      if (v.Image_Main) {
+        add(FID.Image_Main, v.Image_Main);
+      }
+      if (v.Image_Gallery && v.Image_Gallery.length) {
+        add(FID.Image_Gallery, v.Image_Gallery);
+      }
 
       add(FID.Price, v.Price);
       add(FID.Rooms, v.Rooms);
@@ -637,12 +697,12 @@
         var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries/" + encodeURIComponent(existingId) + "?token=" + encodeURIComponent(TOKEN);
         await jfetch(putUrl, { method: "PUT", body: body });
-        alert("✅ Updated | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Updated | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       } else {
         var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries?token=" + encodeURIComponent(TOKEN);
         await jfetch(postUrl, { method: "POST", body: body });
-        alert("✅ Created | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
+        alert("✅ Created | Published:" + (v.Published ? "OK" : "-") + " | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       }
     }
 
