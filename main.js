@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
-// @namespace    bmndan
-// @version      4.1.0
+// @namespace    berman
+// @version      4.1.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -11,24 +11,20 @@
 // @grant        GM_listValues
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
-// @downloadURL  https://raw.githubusercontent.com/bmndan/yscraper/main/main.js
-// @updateURL    https://raw.githubusercontent.com/bmndan/yscraper/main/main.js
 // ==/UserScript==
 
 (function () {
-  'use strict';
-
   try {
-    var TOKEN_URL = 'https://raw.githubusercontent.com/bmndan/yscraper/main/token.txt';
-    var LIBRARY_ID = 'jRdNE9YJP';
-    var API_BASE = 'https://api.mementodatabase.com/v1';
+    var TOKEN_URL = "https://raw.githubusercontent.com/bmndan/yscraper/main/token.txt";
+    var LIBRARY_ID = "jRdNE9YJP";
+    var API_BASE = "https://api.mementodatabase.com/v1";
     var DEBUG = false;
-    var DOMAIN_KEY = 'target_domain';
 
-    // ===== FIELD IDs =====
+    var DOMAIN_KEY = "target_domain";
+
     var FID = {
       URL: 0,
-      CreatedDate: 1,      // intentionally skipped for now
+      CreatedDate: 1, // intentionally skipped for now
       Images_URLs: 7,
       Image_URL_First: 8,
       Price: 9,
@@ -36,6 +32,7 @@
       Floor: 11,
       Area: 12,
       Agency: 13,
+
       Name: 14,
       Phone: 15,
       Type: 16,
@@ -45,57 +42,32 @@
       Title: 20,
       Description: 21,
       BuiltArea: 24,
+
       Name2: 27,
       Phone2: 28
     };
 
     function clean(s) {
-      return String(s || '')
-        .replace(/^\uFEFF/, '')
-        .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u00ad\ufeff]/g, ' ')
-        .replace(/\r/g, '')
-        .replace(/\s+/g, ' ')
+      return String(s || "")
+        .replace(/^\uFEFF/, "")
+        .replace(/\r/g, "")
+        .replace(/\s+/g, " ")
         .trim();
     }
 
-    function getStoredDomain() { return GM_getValue(DOMAIN_KEY, ''); }
-    function setStoredDomain(v) { GM_setValue(DOMAIN_KEY, clean(v)); }
-    function clearStoredDomain() { GM_deleteValue(DOMAIN_KEY); }
-
-    function addControlButton(id, text, top, bg, onClick) {
-      if (document.getElementById(id)) return;
-      var btn = document.createElement('button');
-      btn.id = id;
-      btn.textContent = text;
-      btn.style = 'position:fixed;top:' + top + 'px;right:20px;z-index:999999;padding:10px 14px;background:' + bg + ';color:#fff;border:none;border-radius:8px;cursor:pointer;font:14px/1.2 sans-serif;';
-      btn.onclick = onClick;
-      document.body.appendChild(btn);
+    function getStoredDomain() {
+      return GM_getValue(DOMAIN_KEY, "");
     }
 
-    function initDomainControls() {
-      addControlButton('y2-show-btn', 'SHOW DOMAIN', 20, '#2196f3', function () {
-        alert('Stored domain: ' + getStoredDomain() + '\nCurrent host: ' + location.hostname + '\nKeys: ' + GM_listValues().join(', '));
-      });
-      addControlButton('y2-set-btn', 'SET THIS DOMAIN', 60, '#4caf50', function () {
-        setStoredDomain(location.hostname);
-        alert('Stored domain set to: ' + getStoredDomain());
-        location.reload();
-      });
-      addControlButton('y2-change-btn', 'CHANGE DOMAIN', 100, '#9c27b0', function () {
-        var value = prompt('Enter domain/hostname', getStoredDomain() || location.hostname);
-        if (!value) return;
-        setStoredDomain(value);
-        alert('Stored domain changed to: ' + getStoredDomain());
-        location.reload();
-      });
-      addControlButton('y2-clear-btn', 'CLEAR DOMAIN', 140, '#ff9800', function () {
-        clearStoredDomain();
-        alert('Stored domain cleared');
-        location.reload();
-      });
+    function setStoredDomain(v) {
+      GM_setValue(DOMAIN_KEY, clean(v));
     }
 
-    function shouldRunOnThisHost() {
+    function clearStoredDomain() {
+      GM_deleteValue(DOMAIN_KEY);
+    }
+
+    function onStoredDomain() {
       var d = getStoredDomain();
       return !!d && location.hostname === d;
     }
@@ -103,26 +75,127 @@
     function getToken() {
       return new Promise(function (resolve, reject) {
         GM_xmlhttpRequest({
-          method: 'GET',
-          url: TOKEN_URL + '?t=' + Date.now(),
-          headers: { 'Cache-Control': 'no-cache' },
+          method: "GET",
+          url: TOKEN_URL + "?t=" + Date.now(),
+          headers: { "Cache-Control": "no-cache" },
           onload: function (r) {
             if (r.status === 200) {
-              var token = clean(r.responseText);
-              if (!token) reject(new Error('token.txt is empty'));
+              var token = String(r.responseText || "")
+                .replace(/^\uFEFF/, "")
+                .replace(/\r/g, "")
+                .trim();
+              if (!token) reject(new Error("token.txt empty"));
               else resolve(token);
             } else {
-              reject(new Error('token load failed: ' + r.status));
+              reject(new Error("Token load failed: " + r.status));
             }
           },
-          onerror: function () { reject(new Error('token request failed')); }
+          onerror: function () {
+            reject(new Error("Token request failed"));
+          }
         });
       });
     }
 
+    function makeUiButton(id, text, bottom, onClick) {
+      if (document.getElementById(id)) return document.getElementById(id);
+
+      var btn = document.createElement("button");
+      btn.id = id;
+      btn.textContent = text;
+      btn.style.position = "fixed";
+      btn.style.right = "16px";
+      btn.style.bottom = bottom + "px";
+      btn.style.zIndex = "999999";
+      btn.style.padding = "10px 12px";
+      btn.style.borderRadius = "10px";
+      btn.style.border = "1px solid #222";
+      btn.style.background = "#fff";
+      btn.style.color = "#111";
+      btn.style.font = "14px/1.2 sans-serif";
+      btn.style.boxShadow = "0 6px 18px rgba(0,0,0,.18)";
+      btn.style.cursor = "pointer";
+      btn.addEventListener("click", onClick);
+      document.body.appendChild(btn);
+      return btn;
+    }
+
+    function installDomainUi() {
+      var expanded = false;
+      var actionIds = [
+        "y2ShowDomainBtn",
+        "y2SetDomainBtn",
+        "y2ChangeDomainBtn",
+        "y2ClearDomainBtn"
+      ];
+
+      function removeActions() {
+        actionIds.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.remove();
+        });
+      }
+
+      function showActions() {
+        makeUiButton("y2ShowDomainBtn", "SHOW DOMAIN", 226, function () {
+          alert(
+            "Stored domain: " + getStoredDomain() +
+            "\nCurrent host: " + location.hostname +
+            "\nKeys: " + GM_listValues().join(", ")
+          );
+        });
+
+        makeUiButton("y2SetDomainBtn", "SET THIS DOMAIN", 184, function () {
+          setStoredDomain(location.hostname);
+          alert("Stored domain set to: " + getStoredDomain());
+          location.reload();
+        });
+
+        makeUiButton("y2ChangeDomainBtn", "CHANGE DOMAIN", 142, function () {
+          var value = prompt("Enter domain/hostname", getStoredDomain() || location.hostname);
+          if (!value) return;
+          setStoredDomain(value);
+          alert("Stored domain changed to: " + getStoredDomain());
+          location.reload();
+        });
+
+        makeUiButton("y2ClearDomainBtn", "CLEAR DOMAIN", 100, function () {
+          clearStoredDomain();
+          alert("Stored domain cleared");
+          location.reload();
+        });
+      }
+
+      var menuBtn = makeUiButton("y2MenuBtn", "Y2", 58, function () {
+        expanded = !expanded;
+        if (expanded) showActions();
+        else removeActions();
+      });
+      menuBtn.style.minWidth = "44px";
+      menuBtn.style.padding = "8px 10px";
+    }
+
+    installDomainUi();
+
+    if (!onStoredDomain()) return;
+    if (!/\/realestate\/item\//.test(location.pathname)) return;
+
+    GM_addStyle(
+      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;padding:10px 12px;border-radius:10px;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}" +
+      "#mementoSaveBtn:disabled{opacity:.6;cursor:default}"
+    );
+
+    var btn = document.getElementById("mementoSaveBtn");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "mementoSaveBtn";
+      btn.textContent = "Save to Memento";
+      document.body.appendChild(btn);
+    }
+
     function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-    function norm(s) { return (s || '').toString().replace(/\s+/g, ' ').trim(); }
-    function digits(s) { return (s || '').toString().replace(/[^\d]/g, ''); }
+    function norm(s) { return (s || "").toString().replace(/\s+/g, " ").trim(); }
+    function digits(s) { return (s || "").toString().replace(/[^\d]/g, ""); }
     function asNum(x) {
       if (x === 0) return 0;
       var d = digits(x);
@@ -130,7 +203,9 @@
       var n = Number(d);
       return isFinite(n) ? n : null;
     }
-    function keepIf(n, pred) { return (typeof n === 'number' && isFinite(n) && pred(n)) ? n : null; }
+    function keepIf(n, pred) {
+      return (typeof n === "number" && isFinite(n) && pred(n)) ? n : null;
+    }
 
     function normalizeNumerics(o) {
       return {
@@ -143,26 +218,30 @@
     }
 
     async function jfetch(url, opts) {
-      var res = await fetch(url, Object.assign({}, opts, {
-        headers: { 'Content-Type': 'application/json' }
-      }));
+      var headers = Object.assign({ "Content-Type": "application/json" }, (opts && opts.headers) || {});
+      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
       var t = await res.text();
       var data = {};
-      try { data = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Non-JSON response: ' + t.slice(0, 220)); }
-      if (!res.ok) throw new Error(res.status + ': ' + t.slice(0, 320));
+      try {
+        data = t ? JSON.parse(t) : {};
+      } catch (e) {
+        throw new Error("Non-JSON response: " + t.slice(0, 220));
+      }
+      if (!res.ok) throw new Error(res.status + ": " + t.slice(0, 320));
       return data;
     }
 
     function getText(sel) {
       var el = document.querySelector(sel);
-      return el ? ((el.innerText || el.textContent || '').trim()) : '';
+      return el ? ((el.innerText || el.textContent || "").trim()) : "";
     }
+
     function getFirstText(selectors) {
       for (var i = 0; i < selectors.length; i++) {
         var v = getText(selectors[i]);
         if (v) return v;
       }
-      return '';
+      return "";
     }
 
     function extractRoomsFloorAreaFromTiles() {
@@ -173,26 +252,25 @@
       if (!container) return { Rooms: null, Floor: null, FloorsFromSlash: null, Area: null };
 
       var Rooms = null, Floor = null, FloorsFromSlash = null, Area = null;
+      var items = Array.from(container.querySelectorAll(".property-detail_buildingItemBox__ESM9C, [class*='buildingItemBox']"));
 
-      var items = Array.from(container.querySelectorAll('.property-detail_buildingItemBox__ESM9C, [class*=\'buildingItemBox\']'));
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var left = (item.querySelector('[data-testid="building-text"]') || {}).textContent || '';
+        var left = (item.querySelector('[data-testid="building-text"]') || {}).textContent || "";
         left = left.trim();
-        var unit = (item.querySelector('.property-detail_itemValue__V0z6l, [class*=\'itemValue\']') || {}).textContent || '';
+        var unit = (item.querySelector(".property-detail_itemValue__V0z6l, [class*='itemValue']") || {}).textContent || "";
         unit = unit.trim();
-        var combined = (left + ' ' + unit).trim();
+        var combined = (left + " " + unit).trim();
 
-        if (unit.indexOf('חדרים') !== -1) Rooms = asNum(left);
+        if (unit.indexOf("חדרים") !== -1) Rooms = asNum(left);
         if (unit.indexOf('מ"ר') !== -1 || unit.indexOf('מ״ר') !== -1 || unit.indexOf('מ\"ר') !== -1) Area = asNum(left);
-
-        if (combined.indexOf('קרקע') !== -1) Floor = 0;
+        if (combined.indexOf("קרקע") !== -1) Floor = 0;
 
         var m = combined.match(/(\d+)\s*\/\s*(\d+)/);
         if (m) {
           Floor = Number(m[1]);
           FloorsFromSlash = Number(m[2]);
-        } else if (combined.indexOf('קומה') !== -1) {
+        } else if (combined.indexOf("קומה") !== -1) {
           var n = combined.match(/(\d+)/);
           if (n) Floor = Number(n[1]);
         }
@@ -205,26 +283,26 @@
       var values = Array.from(document.querySelectorAll('[class*="item-detail_value"]'));
       var map = {};
       for (var i = 0; i < Math.min(labels.length, values.length); i++) {
-        var k = (labels[i].innerText || labels[i].textContent || '').trim();
-        var v = (values[i].innerText || values[i].textContent || '').trim();
+        var k = (labels[i].innerText || labels[i].textContent || "").trim();
+        var v = (values[i].innerText || values[i].textContent || "").trim();
         if (k) map[k] = v;
       }
       return map;
     }
 
     function extractTitleAndDescription() {
-      var Title = getFirstText(['[data-testid="ad-title"]', 'h1', '[class*="heading_heading"]']) || null;
-      var Description = getFirstText(['[data-testid="description"]', '[class*="description_description"]']) || null;
+      var Title = getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null;
+      var Description = getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null;
       return { Title: Title, Description: Description };
     }
 
     function extractAddressSplit() {
-      var AddressRaw = getFirstText(['[data-testid="address"]', '[class*="address_address"]', '[class*="address"]']) || null;
+      var AddressRaw = getFirstText(["[data-testid='address']", "[class*='address_address']", "[class*='address']"]) || null;
       if (!AddressRaw) return { Type: null, Location: null, City: null };
 
       var s = AddressRaw.trim();
-      var firstComma = s.indexOf(',');
-      var lastComma = s.lastIndexOf(',');
+      var firstComma = s.indexOf(",");
+      var lastComma = s.lastIndexOf(",");
 
       if (firstComma === -1) return { Type: s || null, Location: null, City: null };
       if (firstComma === lastComma) {
@@ -242,7 +320,7 @@
     }
 
     function extractPriceFallback() {
-      var t = norm((document.body && document.body.innerText) || '');
+      var t = norm((document.body && document.body.innerText) || "");
       var matches = Array.from(t.matchAll(/₪\s*([\d,]{4,})/g))
         .map(function (x) { return Number(digits(x[1])); })
         .filter(function (n) { return isFinite(n) && n > 0; });
@@ -252,65 +330,66 @@
     function extractImages() {
       function uniq(arr) { return Array.from(new Set(arr)); }
       function toAbsHttps(u) {
-        if (!u) return '';
+        if (!u) return "";
         u = u.trim();
-        if (!u || u.indexOf('blob:') === 0 || u.indexOf('data:') === 0) return '';
-        if (u.indexOf('//') === 0) return 'https:' + u;
-        if (u.indexOf('/') === 0) return location.origin + u;
+        if (!u || u.indexOf("blob:") === 0 || u.indexOf("data:") === 0) return "";
+        if (u.indexOf("//") === 0) return "https:" + u;
+        if (u.indexOf("/") === 0) return location.origin + u;
         return u;
       }
       function fromSrcset(srcset) {
-        if (!srcset) return '';
-        var parts = srcset.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-        var last = parts[parts.length - 1] || '';
-        return (last.split(' ')[0] || '');
+        if (!srcset) return "";
+        var parts = srcset.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+        var last = parts[parts.length - 1] || "";
+        return (last.split(" ")[0] || "");
       }
       function addC6(u) {
         if (!u) return u;
-        return u.indexOf('c=6') !== -1 ? u : (u.indexOf('?') !== -1 ? u + '&c=6' : u + '?c=6');
+        return u.indexOf("c=6") !== -1 ? u : (u.indexOf("?") !== -1 ? u + "&c=6" : u + "?c=6");
       }
 
       var gallery =
-        document.querySelector('.ad-item-page-layout_galleryBox__4sXPG') ||
-        document.querySelector('[class*=\'galleryBox\']') ||
+        document.querySelector(".ad-item-page-layout_galleryBox__4sXPG") ||
+        document.querySelector("[class*='galleryBox']") ||
         null;
 
       var root = gallery || document;
-      var nodes = Array.from(root.querySelectorAll('[data-testid="image"], [data-testid="image"] img, picture img, img, source, meta[property="og:image"], meta[name="og:image"]'));
+      var nodes = Array.from(root.querySelectorAll('[data-testid="image"], [data-testid="image"] img, picture img, img, source, meta[property="og:image"]'));
 
       var urls = [];
       nodes.forEach(function (n) {
-        var tag = (n.tagName || '').toLowerCase();
-        if (tag === 'img') {
-          var u1 = n.currentSrc || n.src || '';
-          var u2 = n.getAttribute('data-src') || '';
-          var u3 = fromSrcset(n.getAttribute('srcset') || n.srcset || '');
+        var tag = (n.tagName || "").toLowerCase();
+
+        if (tag === "img") {
+          var u1 = n.currentSrc || n.src || "";
+          var u2 = n.getAttribute("data-src") || "";
+          var u3 = fromSrcset(n.getAttribute("srcset") || n.srcset || "");
           [u1, u2, u3].forEach(function (u) {
             var abs = toAbsHttps(u);
             if (abs) urls.push(abs);
           });
-        } else if (tag === 'source') {
-          var u = fromSrcset(n.getAttribute('srcset') || '');
+        } else if (tag === "source") {
+          var u = fromSrcset(n.getAttribute("srcset") || "");
           var abs2 = toAbsHttps(u);
           if (abs2) urls.push(abs2);
-        } else if (tag === 'meta') {
-          var um = toAbsHttps(n.content || '');
-          if (um) urls.push(um);
+        } else if (tag === "meta") {
+          var m = toAbsHttps(n.getAttribute("content") || "");
+          if (m) urls.push(m);
         }
       });
 
       var u = uniq(urls).map(addC6);
       return {
-        Images_URLs: u.length ? u.join('\n') : null,
+        Images_URLs: u.length ? u.join("\n") : null,
         Image_URL_First: u[0] || null,
         imgCount: u.length
       };
     }
 
     async function revealPhonesIfNeeded() {
-      var btns = Array.from(document.querySelectorAll('button, a'))
+      var btns = Array.from(document.querySelectorAll("button, a"))
         .filter(function (el) {
-          return /(הצג|חשפ|לצפייה|לראות).*(טלפון|מספר)/.test(norm(el.innerText || el.textContent || ''));
+          return /(הצג|חשפ|לצפייה|לראות).*(טלפון|מספר)/.test(norm(el.innerText || el.textContent || ""));
         })
         .slice(0, 8);
 
@@ -321,39 +400,39 @@
     }
 
     function extractContactsUnified() {
-      function cleanPhone(s) { return (s || '').toString().replace(/[^\d]/g, '') || null; }
-      function t(el) { return norm((el && el.textContent) || '') || null; }
+      function cleanPhone(s) { return (s || "").toString().replace(/[^\d]/g, "") || null; }
+      function t(el) { return norm((el && el.textContent) || "") || null; }
 
       var Agency = null;
       var agencySpan =
         document.querySelector('[class*="agency-details_mediatingAgency__"]') ||
         document.querySelector('[data-testid="agency-details"] [class*="mediatingAgency"]');
-      if (agencySpan) Agency = (agencySpan.textContent || '').trim();
+      if (agencySpan) Agency = (agencySpan.textContent || "").trim();
 
       if (!Agency) {
         var agencyDetails = document.querySelector('[data-testid="agency-details"]');
         if (agencyDetails) {
-          var lines = (agencyDetails.textContent || '').split('\n').map(norm).filter(Boolean);
-          var agencyLine = lines.find(function (x) { return x.indexOf('תיווך:') === 0; });
+          var lines = (agencyDetails.textContent || "").split("\n").map(norm).filter(Boolean);
+          var agencyLine = lines.find(function (x) { return x.indexOf("תיווך:") === 0; });
           if (agencyLine) Agency = agencyLine;
         }
       }
 
       if (Agency) {
-        Agency = Agency.replace(/^תיווך:\s*/, '').trim();
-        Agency = Agency.split('מספר רישיון')[0].trim();
-        Agency = Agency.split('לאתר המשרד')[0].trim();
-        Agency = Agency.replace(/\s+/g, ' ').trim() || null;
+        Agency = Agency.replace(/^תיווך:\s*/, "").trim();
+        Agency = Agency.split("מספר רישיון")[0].trim();
+        Agency = Agency.split("לאתר המשרד")[0].trim();
+        Agency = Agency.replace(/\s+/g, " ").trim() || null;
       }
 
       var brokerRoot =
-        document.querySelector('.forsale-agency-contact-section_agencyAdContactsBox') ||
+        document.querySelector(".forsale-agency-contact-section_agencyAdContactsBox") ||
         document.querySelector('[class*="forsale-agency-contact-section_agencyAdContactsBox"]') ||
         document.querySelector('[data-testid="forsale-agency-contact-section"]') ||
         null;
 
       var ownerRoot =
-        document.querySelector('.forsale-contact-section_adContactsBox') ||
+        document.querySelector(".forsale-contact-section_adContactsBox") ||
         document.querySelector('[class*="forsale-contact-section_adContactsBox"]') ||
         document.querySelector('[data-testid="forsale-contact-section"]') ||
         null;
@@ -370,7 +449,8 @@
 
       if (!treatAsOwner) {
         var root = brokerRoot || document;
-        var cards = Array.from(root.querySelectorAll('.agency-ad-contact-info,[class*=\'agency-ad-contact-info\']'));
+        var cards = Array.from(root.querySelectorAll(".agency-ad-contact-info,[class*='agency-ad-contact-info']"));
+
         for (var i = 0; i < cards.length; i++) {
           var card = cards[i];
           var name =
@@ -386,6 +466,7 @@
         if (!contacts.length) {
           var names = Array.from(root.querySelectorAll('[data-testid="agency-ad-contact-info-name"]')).map(t);
           var phones = Array.from(root.querySelectorAll('[data-testid="phone-number-link"]')).map(function (x) { return cleanPhone(t(x)); });
+
           for (var j = 0; j < Math.min(4, Math.max(names.length, phones.length)); j++) {
             var nm = names[j] || null;
             var ph = phones[j] || null;
@@ -394,7 +475,7 @@
         }
       } else {
         var ocards = Array.from(ownerRoot.querySelectorAll(
-          '.ad-contacts_adContactInfoBox,[class*=\'ad-contacts_adContactInfoBox\'],[class*=\'adContactInfoBox\']'
+          ".ad-contacts_adContactInfoBox,[class*='ad-contacts_adContactInfoBox'],[class*='adContactInfoBox']"
         ));
 
         for (var k = 0; k < ocards.length; k++) {
@@ -408,6 +489,7 @@
         if (!contacts.length) {
           var names2 = Array.from(ownerRoot.querySelectorAll('[class*="ad-contact-info_name"]')).map(function (x) { return t(x); });
           var phones2 = Array.from(ownerRoot.querySelectorAll('[class*="ad-contact-info_phoneNumber"]')).map(function (x) { return cleanPhone(t(x)); });
+
           for (var kk = 0; kk < Math.min(4, Math.max(names2.length, phones2.length)); kk++) {
             var nn = names2[kk] || null;
             var pp = phones2[kk] || null;
@@ -419,10 +501,10 @@
       var seen = {};
       var uniq = [];
       for (var u = 0; u < contacts.length; u++) {
-        var cn = (contacts[u].name || '').trim();
-        var cp = (contacts[u].phone || '').trim();
+        var cn = (contacts[u].name || "").trim();
+        var cp = (contacts[u].phone || "").trim();
         if (!cn && !cp) continue;
-        var key = cn + '|' + cp;
+        var key = cn + "|" + cp;
         if (seen[key]) continue;
         seen[key] = true;
         uniq.push({ name: cn || null, phone: cp || null });
@@ -440,7 +522,7 @@
 
     async function extractAll() {
       for (var i = 0; i < 120; i++) {
-        var ok = !!(document.querySelector('[data-testid="building-details"]') || document.querySelector('[class*=\'buildingDetailsBox\']'));
+        var ok = !!(document.querySelector('[data-testid="building-details"]') || document.querySelector("[class*='buildingDetailsBox']"));
         if (ok) break;
         await sleep(150);
       }
@@ -449,7 +531,7 @@
       await sleep(250);
 
       var map = extractAdditionalDetailsMap();
-      var FloorsFromMap = asNum(map['קומות בבניין']);
+      var FloorsFromMap = asNum(map["קומות בבניין"]);
       var BuiltAreaFromMap = asNum(map['מ"ר בנוי'] || map['מ״ר בנוי']);
 
       var Floors = keepIf(FloorsFromMap, function (n) { return n >= 1 && n <= 200; });
@@ -458,7 +540,7 @@
       var tile = extractRoomsFloorAreaFromTiles();
       if (!Floors && tile.FloorsFromSlash) Floors = tile.FloorsFromSlash;
 
-      var cleanNums = normalizeNumerics({
+      var num = normalizeNumerics({
         Rooms: tile.Rooms === null ? null : Number(tile.Rooms),
         Floor: tile.Floor === null ? null : Number(tile.Floor),
         Area: tile.Area === null ? null : Number(tile.Area),
@@ -471,25 +553,29 @@
       var imgs = extractImages();
       var contacts = extractContactsUnified();
 
-      if (DEBUG) console.log({ clean: cleanNums, td: td, addr: addr, imgs: imgs, contacts: contacts });
+      if (DEBUG) console.log({ num: num, td: td, addr: addr, imgs: imgs, contacts: contacts });
 
       return {
-        URL: location.href,
-        CreatedDate: null, // intentionally disabled for now
+        URL: location.href.split("?")[0],
         Price: extractPriceFallback(),
-        Rooms: cleanNums.Rooms,
-        Floor: cleanNums.Floor,
-        Area: cleanNums.Area,
-        Floors: cleanNums.Floors,
-        BuiltArea: cleanNums.BuiltArea,
+
+        Rooms: num.Rooms,
+        Floor: num.Floor,
+        Area: num.Area,
+        Floors: num.Floors,
+        BuiltArea: num.BuiltArea,
+
         Title: td.Title,
         Description: td.Description,
+
         Type: addr.Type,
         Location: addr.Location,
         City: addr.City,
+
         Images_URLs: imgs.Images_URLs,
         Image_URL_First: imgs.Image_URL_First,
         imgCount: imgs.imgCount,
+
         Agency: contacts.Agency,
         Name: contacts.Name,
         Phone: contacts.Phone,
@@ -499,44 +585,48 @@
     }
 
     async function upsertToMemento(v) {
-      var token = await getToken();
+      var TOKEN = await getToken();
+
       var fields = [];
       function add(id, val) {
         if (id === null || id === undefined) return;
         if (val === null || val === undefined) return;
-        if (typeof val === 'string' && !val.trim()) return;
+        if (typeof val === "string" && !val.trim()) return;
         fields.push({ id: id, value: val });
       }
 
       add(FID.URL, v.URL);
-      // CreatedDate intentionally skipped
       add(FID.Images_URLs, v.Images_URLs);
       add(FID.Image_URL_First, v.Image_URL_First);
+
       add(FID.Price, v.Price);
       add(FID.Rooms, v.Rooms);
       add(FID.Floor, v.Floor);
       add(FID.Area, v.Area);
       add(FID.Floors, v.Floors);
       add(FID.BuiltArea, v.BuiltArea);
+
       add(FID.Title, v.Title);
       add(FID.Description, v.Description);
+
       add(FID.Type, v.Type);
       add(FID.Location, v.Location);
       add(FID.City, v.City);
+
       add(FID.Agency, v.Agency);
       add(FID.Name, v.Name);
       add(FID.Phone, v.Phone);
       add(FID.Name2, v.Name2);
       add(FID.Phone2, v.Phone2);
 
-      var listUrl = API_BASE + '/libraries/' + encodeURIComponent(LIBRARY_ID) +
-        '/entries?token=' + encodeURIComponent(token) + '&pageSize=1000';
-      var list = await jfetch(listUrl, { method: 'GET' });
+      var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+        "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
+      var list = await jfetch(listUrl, { method: "GET" });
 
       var existingId = null;
       (list.entries || []).some(function (e) {
         var f = (e.fields || []).find(function (x) { return x.id === FID.URL; });
-        if ((f && f.value ? f.value : '').toString().trim() === v.URL) {
+        if ((f && f.value ? f.value : "").toString().trim() === v.URL) {
           existingId = e.id;
           return true;
         }
@@ -546,63 +636,35 @@
       var body = JSON.stringify({ fields: fields });
 
       if (existingId) {
-        var putUrl = API_BASE + '/libraries/' + encodeURIComponent(LIBRARY_ID) +
-          '/entries/' + encodeURIComponent(existingId) + '?token=' + encodeURIComponent(token);
-        await jfetch(putUrl, { method: 'PUT', body: body });
-        alert('✅ Updated | Agency:' + (v.Agency ? 'OK' : '-') + ' | Phone:' + (v.Phone ? 'OK' : '-') + ' | Images:' + (v.imgCount || 0));
+        var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+          "/entries/" + encodeURIComponent(existingId) + "?token=" + encodeURIComponent(TOKEN);
+        await jfetch(putUrl, { method: "PUT", body: body });
+        alert("✅ Updated | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       } else {
-        var postUrl = API_BASE + '/libraries/' + encodeURIComponent(LIBRARY_ID) +
-          '/entries?token=' + encodeURIComponent(token);
-        await jfetch(postUrl, { method: 'POST', body: body });
-        alert('✅ Created | Agency:' + (v.Agency ? 'OK' : '-') + ' | Phone:' + (v.Phone ? 'OK' : '-') + ' | Images:' + (v.imgCount || 0));
+        var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+          "/entries?token=" + encodeURIComponent(TOKEN);
+        await jfetch(postUrl, { method: "POST", body: body });
+        alert("✅ Created | Agency:" + (v.Agency ? "OK" : "-") + " | Phone:" + (v.Phone ? "OK" : "-") + " | Images:" + (v.imgCount || 0));
       }
     }
 
-    GM_addStyle(
-      '#mementoSaveBtn{position:fixed;right:20px;bottom:20px;z-index:999999;padding:10px 14px;border-radius:10px;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}' +
-      '#mementoSaveBtn:disabled{opacity:.6;cursor:default}'
-    );
-
-    function initMainButton() {
-      if (!shouldRunOnThisHost()) return;
-      if (!/\/realestate\/item\//.test(location.pathname)) return;
-
-      var btn = document.getElementById('mementoSaveBtn');
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'mementoSaveBtn';
-        btn.textContent = 'Save to Memento';
-        document.body.appendChild(btn);
+    btn.addEventListener("click", async function () {
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      try {
+        var v = await extractAll();
+        await upsertToMemento(v);
+      } catch (e) {
+        console.error(e);
+        alert("❌ " + (e && e.message ? e.message : e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save to Memento";
       }
+    });
 
-      if (btn.dataset.bound === '1') return;
-      btn.dataset.bound = '1';
-
-      btn.addEventListener('click', async function () {
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-        try {
-          var v = await extractAll();
-          await upsertToMemento(v);
-        } catch (e) {
-          console.error(e);
-          alert('❌ ' + (e && e.message ? e.message : e));
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Save to Memento';
-        }
-      });
-    }
-
-    function boot() {
-      if (!document.body) return setTimeout(boot, 100);
-      initDomainControls();
-      initMainButton();
-    }
-
-    boot();
   } catch (e) {
     console.error(e);
-    alert('❌ Script crashed: ' + (e && e.message ? e.message : e));
+    alert("❌ Script crashed: " + (e && e.message ? e.message : e));
   }
 })();
