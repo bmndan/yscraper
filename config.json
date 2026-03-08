@@ -1,0 +1,70 @@
+{
+  "libraryId": "jRdNE9YJP",
+  "domainKey": "target_domain",
+  "fields": {
+    "URL": 0,
+    "Image_Main": 4,
+    "Price": 9,
+    "Rooms": 10,
+    "Floor": 11,
+    "Area": 12,
+    "Agency": 13,
+    "Name": 14,
+    "Phone": 15,
+    "Type": 16,
+    "Floors": 17,
+    "City": 18,
+    "Location": 19,
+    "Title": 20,
+    "Description": 21,
+    "BuiltArea": 24,
+    "Name2": 27,
+    "Phone2": 28,
+    "Broker": 33,
+    "Exclusive": 34,
+    "Shelter": 36,
+    "Image_Gallery": 37,
+    "Created": 42,
+    "Published": 43,
+    "Parking": 47,
+    "Elevator": 48,
+    "Terrace": 49,
+    "AC": 50,
+    "Storage": 51,
+    "Renovated": 52,
+    "Accessibility": 53,
+    "Bars": 54,
+    "Furnished": 55,
+    "Condition": 57,
+    "SolarHeater": 58
+  },
+  "labels": {
+    "featureSection": "מה יש בנכס",
+    "furnitureSection": "פרטי ריהוט",
+    "detailsCondition": ["מצב הנכס", "מצב"],
+    "detailsParking": ["חניות"]
+  },
+  "tagFlags": {
+    "Exclusive": "בלעדי",
+    "ShelterRegex": "(^|\\W)ממ[״\"]?ד($|\\W)"
+  },
+  "features": {
+    "Parking": "חניה",
+    "Elevator": "מעלית",
+    "Terrace": "מרפסת",
+    "AC": "מיזוג",
+    "Storage": "מחסן",
+    "Renovated": "משופצת",
+    "Accessibility": "גישה לנכים",
+    "Bars": "סורגים",
+    "Furnished": "מרוהטת",
+    "SolarHeater": "דוד שמש"
+  },
+  "conditionMap": {
+    "חדש (לא גרו בנכס)": "חדש מקבלן",
+    "חדש (גרו בנכס)": "חדש - עד 10 שנים",
+    "משופץ": "משופץ ב-5 שנים האחרונות",
+    "במצב שמור": "במצב שמור",
+    "דרוש שיפוץ": "דרוש שיפוץ"
+  }
+}
