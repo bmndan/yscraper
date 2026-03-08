@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.5.1
+// @version      4.5.2
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -56,7 +56,8 @@
       Accessibility: 53,   // גישה לנכים
       Bars: 54,            // סורגים
       Furnished: 55,       // מרוהטת
-      Condition: 57        // מצב
+      Condition: 57,       // מצב
+      SolarHeater: 58      // דוד שמש
     };
 
     function clean(s) {
@@ -656,36 +657,31 @@
     function extractPropertyFeatures(map) {
       var items = extractFeatureList();
 
-      function hasExact(label) {
-        return items.indexOf(label) !== -1;
+      function has(label) {
+        return items.some(function (x) {
+          return x === label || x.indexOf(label) !== -1;
+        });
       }
 
       return {
-        Parking: hasExact("חניה") || (asNum(map["חניות"]) || 0) > 0,
-        Elevator: hasExact("מעלית"),
-        Terrace: hasExact("מרפסת"),
-        AC: hasExact("מיזוג"),
-        Storage: hasExact("מחסן"),
-        Renovated: hasExact("משופצת"),
-        Accessibility: hasExact("גישה לנכים"),
-        Bars: hasExact("סורגים"),
-        Furnished: hasExact("מרוהטת")
+        Parking: has("חניה") || (asNum(map["חניות"]) || 0) > 0,
+        Elevator: has("מעלית"),
+        Terrace: has("מרפסת"),
+        AC: has("מיזוג"),
+        Storage: has("מחסן"),
+        Renovated: has("משופצת"),
+        Accessibility: has("גישה לנכים"),
+        Bars: has("סורגים"),
+        Furnished: has("מרוהטת"),
+        SolarHeater: has("דוד שמש")
       };
     }
 
     function extractCondition(map, features) {
       var raw = clean(map["מצב הנכס"] || "");
 
-      if (raw === "חדש מקבלן") return "חדש מקבלן";
-      if (raw === "חדש - עד 10 שנים") return "חדש - עד 10 שנים";
-      if (raw === "במצב שמור") return "במצב שמור";
-      if (raw === "דרוש שיפוץ") return "דרוש שיפוץ";
-
-      if (raw === "משופץ" || features.Renovated) {
-        return "משופץ ב-5 שנים האחרונות";
-      }
-
-      return null;
+      if (!raw && features.Renovated) return "משופץ";
+      return raw || null;
     }
 
     async function extractAll() {
@@ -781,6 +777,7 @@
         Accessibility: features.Accessibility,
         Bars: features.Bars,
         Furnished: features.Furnished,
+        SolarHeater: features.SolarHeater,
 
         Condition: condition
       };
@@ -838,6 +835,7 @@
       add(FID.Accessibility, v.Accessibility);
       add(FID.Bars, v.Bars);
       add(FID.Furnished, v.Furnished);
+      add(FID.SolarHeater, v.SolarHeater);
 
       add(FID.Condition, v.Condition);
 
