@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.0
+// @version      4.7.2
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -83,6 +83,11 @@
       return location.origin + location.pathname;
     }
 
+    function getListingIdFromUrl() {
+      var parts = location.pathname.split("/").filter(Boolean);
+      return parts.length ? parts[parts.length - 1] : null;
+    }
+
     function getNowIsoWithOffset() {
       var d = new Date();
       function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
@@ -141,9 +146,7 @@
       if (Array.isArray(v)) {
         return v.map(function (x) {
           if (typeof x === "string") return clean(x);
-          if (x && typeof x === "object") {
-            return clean(x.url || x.value || x.path || "");
-          }
+          if (x && typeof x === "object") return clean(x.url || x.value || x.path || "");
           return "";
         }).filter(Boolean);
       }
@@ -425,11 +428,7 @@
 
       function isOverlayAsset(u) {
         u = String(u || "").toLowerCase();
-        return (
-          !u ||
-          u.indexOf("/gallery/play.png") !== -1 ||
-          u.endsWith("/play.png")
-        );
+        return !u || u.indexOf("/gallery/play.png") !== -1 || u.endsWith("/play.png");
       }
 
       function getVideoPosterUrls(root) {
@@ -852,6 +851,7 @@
 
       return {
         URL: getCleanItemUrl(),
+        Listing_ID: getListingIdFromUrl(),
         Created: getNowIsoWithOffset(),
         Published: publishedIso,
         Price: extractPriceFallback(),
@@ -906,18 +906,31 @@
       var list = await jfetch(listUrl, { method: "GET" });
 
       var existingEntry = null;
+
       (list.entries || []).some(function (e) {
-        var f = (e.fields || []).find(function (x) { return x.id === FID.URL; });
-        if (String((f && f.value) || "").trim() === v.URL) {
+        var idVal = extractFieldValue(e, FID.Listing_ID);
+        if (clean(idVal || "") && clean(idVal || "") === clean(v.Listing_ID || "")) {
           existingEntry = e;
           return true;
         }
         return false;
       });
 
+      if (!existingEntry) {
+        (list.entries || []).some(function (e) {
+          var urlVal = extractFieldValue(e, FID.URL);
+          if (clean(urlVal || "") === clean(v.URL || "")) {
+            existingEntry = e;
+            return true;
+          }
+          return false;
+        });
+      }
+
       var finalValues = Object.assign({}, v);
 
       if (existingEntry) {
+        var existingStartPrice = extractFieldValue(existingEntry, FID.StartPrice);
         var existingPrice = extractFieldValue(existingEntry, FID.Price);
         var existingPrevPrice = extractFieldValue(existingEntry, FID.PrevPrice);
         var existingDesc = extractFieldValue(existingEntry, FID.Description);
@@ -925,6 +938,10 @@
         var existingAllImages = extractFieldValue(existingEntry, FID.Image_URLs_All);
         var existingMain = extractFieldValue(existingEntry, FID.Image_Main);
         var existingGallery = extractFieldValue(existingEntry, FID.Image_Gallery);
+
+        finalValues.StartPrice = existingStartPrice != null && String(existingStartPrice).trim() !== ""
+          ? existingStartPrice
+          : v.Price;
 
         if (
           existingPrice != null &&
@@ -963,6 +980,7 @@
 
         finalValues.Image_URLs_All = mergedAllImages.join("\n") || null;
       } else {
+        finalValues.StartPrice = v.Price;
         finalValues.PrevPrice = null;
         finalValues.PrevDescription = null;
         finalValues.Image_URLs_All = uniqueStrings(v.Image_URLs_All_New || []).join("\n") || null;
@@ -978,6 +996,7 @@
       }
 
       add(FID.URL, finalValues.URL);
+      add(FID.Listing_ID, finalValues.Listing_ID);
       add(FID.Created, finalValues.Created);
       add(FID.Published, finalValues.Published);
 
@@ -986,6 +1005,7 @@
       add(FID.Image_URLs_All, finalValues.Image_URLs_All);
 
       add(FID.Price, finalValues.Price);
+      add(FID.StartPrice, finalValues.StartPrice);
       add(FID.PrevPrice, finalValues.PrevPrice);
 
       add(FID.Rooms, finalValues.Rooms);
