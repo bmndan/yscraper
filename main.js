@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.6
+// @version      4.7.7
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -111,6 +111,12 @@
       var d = new Date();
       function pad(n) { return String(n).padStart(2, "0"); }
       return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    }
+
+    function formatPriceHistoryValue(n) {
+      var num = Number(String(n || "").replace(/[^\d.-]/g, ""));
+      if (!isFinite(num)) return String(n || "");
+      return String(Math.round(num)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
     }
 
     function splitLines(s) {
@@ -1019,7 +1025,7 @@
         ) {
           finalValues.PrevPrice = appendHistoryLine(
             existingPrevPrice,
-            todayStamp() + " | " + existingPrice,
+            formatPriceHistoryValue(existingPrice) + " | " + todayStamp(),
             "\n"
           );
         } else {
@@ -1032,7 +1038,7 @@
         ) {
           finalValues.PrevPrice = appendHistoryLine(
             finalValues.PrevPrice,
-            todayStamp() + " | " + v.OldDisplayedPrice,
+            formatPriceHistoryValue(v.OldDisplayedPrice) + " | " + todayStamp(),
             "\n"
           );
         }
@@ -1063,7 +1069,7 @@
         finalValues.StartPrice = v.OldDisplayedPrice || v.Price;
         finalValues.PrevPrice =
           (v.OldDisplayedPrice != null && String(v.OldDisplayedPrice) !== String(v.Price))
-            ? (todayStamp() + " | " + v.OldDisplayedPrice)
+            ? (formatPriceHistoryValue(v.OldDisplayedPrice) + " | " + todayStamp())
             : null;
         finalValues.PrevDescription = null;
         finalValues.Image_URLs_All = uniqueStrings(v.Image_URLs_All_New || []).join("\n") || null;
