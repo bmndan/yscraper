@@ -234,7 +234,7 @@
       btn.style.right = "16px";
       btn.style.bottom = bottom + "px";
       btn.style.zIndex = "999999";
-      btn.style.height = "40px";
+      btn.style.height = "30px";
       btn.style.lineHeight = "20px";
       btn.style.padding = "0 12px";
       btn.style.boxSizing = "border-box";
@@ -257,7 +257,7 @@
       if (menu) {
         menu.style.top = "4px";
         menu.style.bottom = "auto";
-        menu.style.left = "50%";
+        menu.style.left = "40%";
         menu.style.right = "auto";
         menu.style.transform = "translateX(-58px)";
       }
@@ -265,7 +265,7 @@
       if (save) {
         save.style.top = "4px";
         save.style.bottom = "auto";
-        save.style.left = "50%";
+        save.style.left = "40%";
         save.style.right = "auto";
         save.style.transform = "translateX(6px)";
       }
@@ -317,14 +317,14 @@
         });
       }
 
-      var menuBtn = makeUiButton("y2MenuBtn", "Y2", 58, function () {
+      var menuBtn = makeUiButton("y2MenuBtn", "הגדרות", 58, function () {
         expanded = !expanded;
         if (expanded) showActions();
         else removeActions();
       });
       menuBtn.style.minWidth = "44px";
-      menuBtn.style.height = "40px";
-      menuBtn.style.padding = "0 10px";
+      menuBtn.style.height = "30px";
+      menuBtn.style.padding = "0 12px";
       menuBtn.style.boxSizing = "border-box";
     }
 
@@ -346,7 +346,7 @@
       btn.textContent = "שמירה";
       document.body.appendChild(btn);
     }
-    btn.style.height = "40px";
+    btn.style.height = "30px";
     btn.style.padding = "0 12px";
     btn.style.boxSizing = "border-box";
     btn.style.lineHeight = "20px";
