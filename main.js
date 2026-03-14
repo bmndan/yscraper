@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.8.0
+// @version      4.8.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -19,6 +19,10 @@
     var CONFIG_URL = "https://raw.githubusercontent.com/bmndan/yscraper/main/config.json";
     var API_BASE = "https://api.mementodatabase.com/v1";
     var DEBUG = false;
+
+    var SAVE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+    var MENU_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+    var WAIT_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>';
 
     function clean(s) {
       return String(s || "")
@@ -224,6 +228,30 @@
       return !!d && location.hostname === d;
     }
 
+    function setButtonIcon(btn, html, title) {
+      if (!btn) return;
+      btn.innerHTML = html;
+      btn.style.display = "flex";
+      btn.style.alignItems = "center";
+      btn.style.justifyContent = "center";
+      if (title) btn.title = title;
+    }
+
+    function styleMainCircleButton(btn) {
+      if (!btn) return;
+      btn.style.width = "40px";
+      btn.style.height = "40px";
+      btn.style.minWidth = "40px";
+      btn.style.padding = "0";
+      btn.style.boxSizing = "border-box";
+      btn.style.borderRadius = "50%";
+      btn.style.display = "flex";
+      btn.style.alignItems = "center";
+      btn.style.justifyContent = "center";
+      btn.style.lineHeight = "1";
+      btn.style.textAlign = "center";
+    }
+
     function makeUiButton(id, text, bottom, onClick) {
       if (document.getElementById(id)) return document.getElementById(id);
 
@@ -234,10 +262,7 @@
       btn.style.right = "16px";
       btn.style.bottom = bottom + "px";
       btn.style.zIndex = "999999";
-      btn.style.height = "30px";
-      btn.style.lineHeight = "20px";
-      btn.style.padding = "0 12px";
-      btn.style.boxSizing = "border-box";
+      btn.style.padding = "10px 12px";
       btn.style.borderRadius = "10px";
       btn.style.border = "1px solid #222";
       btn.style.background = "#fff";
@@ -250,25 +275,44 @@
       return btn;
     }
 
-    function positionMainButtonsTopCenter() {
+    function positionMainButtonsTopLeft() {
       var menu = document.getElementById("y2MenuBtn");
       var save = document.getElementById("mementoSaveBtn");
 
       if (menu) {
-        menu.style.top = "4px";
+        menu.style.top = "50px";
         menu.style.bottom = "auto";
-        menu.style.left = "40%";
+        menu.style.left = "12px";
         menu.style.right = "auto";
-        menu.style.transform = "translateX(-58px)";
+        menu.style.transform = "none";
       }
 
       if (save) {
-        save.style.top = "4px";
+        save.style.top = "50px";
         save.style.bottom = "auto";
-        save.style.left = "40%";
+        save.style.left = "60px";
         save.style.right = "auto";
-        save.style.transform = "translateX(6px)";
+        save.style.transform = "none";
       }
+    }
+
+    function positionMenuActionButtonsTopLeft() {
+      var ids = [
+        ["y2ShowDomainBtn", 98],
+        ["y2SetDomainBtn", 144],
+        ["y2ChangeDomainBtn", 190],
+        ["y2ClearDomainBtn", 236]
+      ];
+
+      ids.forEach(function (item) {
+        var el = document.getElementById(item[0]);
+        if (!el) return;
+        el.style.top = item[1] + "px";
+        el.style.bottom = "auto";
+        el.style.left = "12px";
+        el.style.right = "auto";
+        el.style.transform = "none";
+      });
     }
 
     function installDomainUi() {
@@ -315,27 +359,28 @@
           alert("Stored domain cleared");
           location.reload();
         });
+
+        positionMenuActionButtonsTopLeft();
       }
 
-      var menuBtn = makeUiButton("y2MenuBtn", "הגדרות", 58, function () {
+      var menuBtn = makeUiButton("y2MenuBtn", "", 58, function () {
         expanded = !expanded;
         if (expanded) showActions();
         else removeActions();
       });
-      menuBtn.style.minWidth = "44px";
-      menuBtn.style.height = "30px";
-      menuBtn.style.padding = "0 12px";
-      menuBtn.style.boxSizing = "border-box";
+
+      styleMainCircleButton(menuBtn);
+      setButtonIcon(menuBtn, MENU_ICON, "הגדרות");
     }
 
     installDomainUi();
-    positionMainButtonsTopCenter();
+    positionMainButtonsTopLeft();
 
     if (!onStoredDomain()) return;
     if (!/\/realestate\/item\//.test(location.pathname)) return;
 
     GM_addStyle(
-      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;height:40px;line-height:20px;padding:0 12px;box-sizing:border-box;border-radius:10px;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}" +
+      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;width:40px;height:40px;min-width:40px;padding:0;box-sizing:border-box;border-radius:50%;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center}" +
       "#mementoSaveBtn:disabled{opacity:.6;cursor:default}"
     );
 
@@ -343,14 +388,11 @@
     if (!btn) {
       btn = document.createElement("button");
       btn.id = "mementoSaveBtn";
-      btn.textContent = "שמירה";
       document.body.appendChild(btn);
     }
-    btn.style.height = "30px";
-    btn.style.padding = "0 12px";
-    btn.style.boxSizing = "border-box";
-    btn.style.lineHeight = "20px";
-    positionMainButtonsTopCenter();
+    styleMainCircleButton(btn);
+    setButtonIcon(btn, SAVE_ICON, "שמירה");
+    positionMainButtonsTopLeft();
 
     function extractRoomsFloorAreaFromTiles() {
       var container =
@@ -1189,7 +1231,7 @@
 
     btn.addEventListener("click", async function () {
       btn.disabled = true;
-      btn.textContent = "שומר...";
+      setButtonIcon(btn, WAIT_ICON, "שומר...");
       try {
         var v = await extractAll();
         await upsertToMemento(v);
@@ -1198,7 +1240,7 @@
         alert("❌ " + (e && e.message ? e.message : e));
       } finally {
         btn.disabled = false;
-        btn.textContent = "שמירה";
+        setButtonIcon(btn, SAVE_ICON, "שמירה");
       }
     });
 
