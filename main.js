@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
-// @namespace    bmndan
-// @version      4.7.9
+// @namespace    berman
+// @version      4.8.0
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -234,7 +234,10 @@
       btn.style.right = "16px";
       btn.style.bottom = bottom + "px";
       btn.style.zIndex = "999999";
-      btn.style.padding = "10px 12px";
+      btn.style.height = "40px";
+      btn.style.lineHeight = "20px";
+      btn.style.padding = "0 12px";
+      btn.style.boxSizing = "border-box";
       btn.style.borderRadius = "10px";
       btn.style.border = "1px solid #222";
       btn.style.background = "#fff";
@@ -252,7 +255,7 @@
       var save = document.getElementById("mementoSaveBtn");
 
       if (menu) {
-        menu.style.top = "10px";
+        menu.style.top = "4px";
         menu.style.bottom = "auto";
         menu.style.left = "50%";
         menu.style.right = "auto";
@@ -260,7 +263,7 @@
       }
 
       if (save) {
-        save.style.top = "10px";
+        save.style.top = "4px";
         save.style.bottom = "auto";
         save.style.left = "50%";
         save.style.right = "auto";
@@ -320,7 +323,9 @@
         else removeActions();
       });
       menuBtn.style.minWidth = "44px";
-      menuBtn.style.padding = "8px 10px";
+      menuBtn.style.height = "40px";
+      menuBtn.style.padding = "0 10px";
+      menuBtn.style.boxSizing = "border-box";
     }
 
     installDomainUi();
@@ -330,7 +335,7 @@
     if (!/\/realestate\/item\//.test(location.pathname)) return;
 
     GM_addStyle(
-      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;padding:10px 12px;border-radius:10px;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}" +
+      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;height:40px;line-height:20px;padding:0 12px;box-sizing:border-box;border-radius:10px;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}" +
       "#mementoSaveBtn:disabled{opacity:.6;cursor:default}"
     );
 
@@ -341,6 +346,10 @@
       btn.textContent = "שמירה";
       document.body.appendChild(btn);
     }
+    btn.style.height = "40px";
+    btn.style.padding = "0 12px";
+    btn.style.boxSizing = "border-box";
+    btn.style.lineHeight = "20px";
     positionMainButtonsTopCenter();
 
     function extractRoomsFloorAreaFromTiles() {
