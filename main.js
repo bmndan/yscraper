@@ -276,24 +276,24 @@
     }
 
     function positionMainButtonsTopLeft() {
-      var menu = document.getElementById("y2MenuBtn");
-      var save = document.getElementById("mementoSaveBtn");
+  var menu = document.getElementById("y2MenuBtn");
+  var save = document.getElementById("mementoSaveBtn");
 
-      if (menu) {
-        menu.style.top = "50px";
-        menu.style.bottom = "auto";
-        menu.style.left = "12px";
-        menu.style.right = "auto";
-        menu.style.transform = "none";
-      }
+  if (save) {
+    save.style.top = "100px";
+    save.style.bottom = "auto";
+    save.style.left = "12px";
+    save.style.right = "auto";
+    save.style.transform = "none";
+  }
 
-      if (save) {
-        save.style.top = "50px";
-        save.style.bottom = "auto";
-        save.style.left = "60px";
-        save.style.right = "auto";
-        save.style.transform = "none";
-      }
+  if (menu) {
+    menu.style.top = "148px";
+    menu.style.bottom = "auto";
+    menu.style.left = "12px";
+    menu.style.right = "auto";
+    menu.style.transform = "none";
+  }
     }
 
     function positionMenuActionButtonsTopLeft() {
