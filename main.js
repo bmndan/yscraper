@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Y2 Main
-// @namespace    berman
+// @namespace    bmndan
 // @version      4.7.9
 // @match        *://*/*
 // @run-at       document-end
