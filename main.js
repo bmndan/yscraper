@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.8.0
+// @version      4.8.1
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
