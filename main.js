@@ -316,7 +316,7 @@
     if (!btn) {
       btn = document.createElement("button");
       btn.id = "mementoSaveBtn";
-      btn.textContent = "Save to Memento";
+      btn.textContent = "שמירה";
       document.body.appendChild(btn);
     }
 
@@ -1146,18 +1146,18 @@
         var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries/" + encodeURIComponent(existingEntry.id) + "?token=" + encodeURIComponent(TOKEN);
         await jfetch(putUrl, { method: "PUT", body: body });
-        alert("✅ Updated");
+        alert("✅ עודכן");
       } else {
         var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
           "/entries?token=" + encodeURIComponent(TOKEN);
         await jfetch(postUrl, { method: "POST", body: body });
-        alert("✅ Created");
+        alert("✅ נשמר");
       }
     }
 
     btn.addEventListener("click", async function () {
       btn.disabled = true;
-      btn.textContent = "Saving...";
+      btn.textContent = "שומר...";
       try {
         var v = await extractAll();
         await upsertToMemento(v);
@@ -1166,7 +1166,7 @@
         alert("❌ " + (e && e.message ? e.message : e));
       } finally {
         btn.disabled = false;
-        btn.textContent = "Save to Memento";
+        btn.textContent = "שמירה";
       }
     });
 
