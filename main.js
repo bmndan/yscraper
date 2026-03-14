@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.7.8
+// @version      4.7.9
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -247,6 +247,27 @@
       return btn;
     }
 
+    function positionMainButtonsTopCenter() {
+      var menu = document.getElementById("y2MenuBtn");
+      var save = document.getElementById("mementoSaveBtn");
+
+      if (menu) {
+        menu.style.top = "10px";
+        menu.style.bottom = "auto";
+        menu.style.left = "50%";
+        menu.style.right = "auto";
+        menu.style.transform = "translateX(-58px)";
+      }
+
+      if (save) {
+        save.style.top = "10px";
+        save.style.bottom = "auto";
+        save.style.left = "50%";
+        save.style.right = "auto";
+        save.style.transform = "translateX(6px)";
+      }
+    }
+
     function installDomainUi() {
       var expanded = false;
       var actionIds = [
@@ -303,6 +324,7 @@
     }
 
     installDomainUi();
+    positionMainButtonsTopCenter();
 
     if (!onStoredDomain()) return;
     if (!/\/realestate\/item\//.test(location.pathname)) return;
@@ -319,6 +341,7 @@
       btn.textContent = "שמירה";
       document.body.appendChild(btn);
     }
+    positionMainButtonsTopCenter();
 
     function extractRoomsFloorAreaFromTiles() {
       var container =
