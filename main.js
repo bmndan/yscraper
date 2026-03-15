@@ -307,7 +307,7 @@
         if (save) {
           save.style.top = "100px";
           save.style.bottom = "auto";
-          save.style.left = "12px";
+          save.style.left = "15px";
           save.style.right = "auto";
           save.style.transform = "none";
         }
@@ -315,7 +315,7 @@
         if (menu) {
           menu.style.top = "143px";
           menu.style.bottom = "auto";
-          menu.style.left = "12px";
+          menu.style.left = "15px";
           menu.style.right = "auto";
           menu.style.transform = "none";
         }
@@ -349,7 +349,7 @@
         } else {
           el.style.top = item[1] + "px";
           el.style.bottom = "auto";
-          el.style.left = "12px";
+          el.style.left = "15px";
           el.style.right = "auto";
         }
 
