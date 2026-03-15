@@ -275,43 +275,74 @@
       return btn;
     }
 
-    function positionMainButtonsTopLeft() {
-  var menu = document.getElementById("y2MenuBtn");
-  var save = document.getElementById("mementoSaveBtn");
-
-  if (save) {
-    save.style.top = "100px";
-    save.style.bottom = "auto";
-    save.style.left = "12px";
-    save.style.right = "auto";
-    save.style.transform = "none";
-  }
-
-  if (menu) {
-    menu.style.top = "148px";
-    menu.style.bottom = "auto";
-    menu.style.left = "12px";
-    menu.style.right = "auto";
-    menu.style.transform = "none";
-  }
+    function isDesktopLayout() {
+      return window.innerWidth >= 900;
     }
 
-    function positionMenuActionButtonsTopLeft() {
-      var ids = [
-        ["y2ShowDomainBtn", 98],
-        ["y2SetDomainBtn", 144],
-        ["y2ChangeDomainBtn", 190],
-        ["y2ClearDomainBtn", 236]
-      ];
+    function positionMainButtons() {
+      var menu = document.getElementById("y2MenuBtn");
+      var save = document.getElementById("mementoSaveBtn");
 
-      ids.forEach(function (item) {
+      if (isDesktopLayout()) {
+        if (save) {
+          save.style.top = "20px";
+          save.style.bottom = "auto";
+          save.style.left = "20px";
+          save.style.right = "auto";
+          save.style.transform = "none";
+        }
+
+        if (menu) {
+          menu.style.top = "68px";
+          menu.style.bottom = "auto";
+          menu.style.left = "20px";
+          menu.style.right = "auto";
+          menu.style.transform = "none";
+        }
+      } else {
+        if (save) {
+          save.style.top = "100px";
+          save.style.bottom = "auto";
+          save.style.left = "12px";
+          save.style.right = "auto";
+          save.style.transform = "none";
+        }
+
+        if (menu) {
+          menu.style.top = "148px";
+          menu.style.bottom = "auto";
+          menu.style.left = "12px";
+          menu.style.right = "auto";
+          menu.style.transform = "none";
+        }
+      }
+    }
+
+    function positionMenuActionButtons() {
+      var items = isDesktopLayout()
+        ? [
+            ["y2ShowDomainBtn", 116],
+            ["y2SetDomainBtn", 164],
+            ["y2ChangeDomainBtn", 212],
+            ["y2ClearDomainBtn", 260]
+          ]
+        : [
+            ["y2ShowDomainBtn", 196],
+            ["y2SetDomainBtn", 244],
+            ["y2ChangeDomainBtn", 292],
+            ["y2ClearDomainBtn", 340]
+          ];
+
+      items.forEach(function (item) {
         var el = document.getElementById(item[0]);
         if (!el) return;
+
         el.style.top = item[1] + "px";
         el.style.bottom = "auto";
-        el.style.left = "12px";
+        el.style.left = isDesktopLayout() ? "20px" : "12px";
         el.style.right = "auto";
         el.style.transform = "none";
+        el.style.zIndex = "1000000";
       });
     }
 
@@ -360,7 +391,7 @@
           location.reload();
         });
 
-        positionMenuActionButtonsTopLeft();
+        positionMenuActionButtons();
       }
 
       var menuBtn = makeUiButton("y2MenuBtn", "", 58, function () {
@@ -374,7 +405,7 @@
     }
 
     installDomainUi();
-    positionMainButtonsTopLeft();
+    positionMainButtons();
 
     if (!onStoredDomain()) return;
     if (!/\/realestate\/item\//.test(location.pathname)) return;
@@ -392,7 +423,12 @@
     }
     styleMainCircleButton(btn);
     setButtonIcon(btn, SAVE_ICON, "שמירה");
-    positionMainButtonsTopLeft();
+    positionMainButtons();
+
+    window.addEventListener("resize", function () {
+      positionMainButtons();
+      positionMenuActionButtons();
+    });
 
     function extractRoomsFloorAreaFromTiles() {
       var container =
