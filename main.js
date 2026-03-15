@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Y2 Main
 // @namespace    berman
-// @version      4.8.2
+// @version      4.8.3
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_addStyle
@@ -239,9 +239,9 @@
 
     function styleMainCircleButton(btn) {
       if (!btn) return;
-      btn.style.width = "40px";
-      btn.style.height = "40px";
-      btn.style.minWidth = "40px";
+      btn.style.width = "35px";
+      btn.style.height = "35px";
+      btn.style.minWidth = "35px";
       btn.style.padding = "0";
       btn.style.boxSizing = "border-box";
       btn.style.borderRadius = "50%";
@@ -250,6 +250,10 @@
       btn.style.justifyContent = "center";
       btn.style.lineHeight = "1";
       btn.style.textAlign = "center";
+      btn.style.border = "1px solid #ccc";
+      btn.style.boxShadow = "none";
+      btn.style.color = "#363636";
+      btn.style.background = "#fff";
     }
 
     function makeUiButton(id, text, bottom, onClick) {
@@ -264,11 +268,11 @@
       btn.style.zIndex = "999999";
       btn.style.padding = "10px 12px";
       btn.style.borderRadius = "10px";
-      btn.style.border = "1px solid #222";
+      btn.style.border = "1px solid #ccc";
       btn.style.background = "#fff";
-      btn.style.color = "#111";
+      btn.style.color = "#363636";
       btn.style.font = "14px/1.2 sans-serif";
-      btn.style.boxShadow = "0 6px 18px rgba(0,0,0,.18)";
+      btn.style.boxShadow = "none";
       btn.style.cursor = "pointer";
       btn.addEventListener("click", onClick);
       document.body.appendChild(btn);
@@ -285,18 +289,18 @@
 
       if (isDesktopLayout()) {
         if (save) {
-          save.style.top = "20px";
-          save.style.bottom = "auto";
-          save.style.left = "20px";
-          save.style.right = "auto";
+          save.style.top = "auto";
+          save.style.bottom = "20px";
+          save.style.left = "auto";
+          save.style.right = "20px";
           save.style.transform = "none";
         }
 
         if (menu) {
-          menu.style.top = "68px";
-          menu.style.bottom = "auto";
-          menu.style.left = "20px";
-          menu.style.right = "auto";
+          menu.style.top = "auto";
+          menu.style.bottom = "63px";
+          menu.style.left = "auto";
+          menu.style.right = "20px";
           menu.style.transform = "none";
         }
       } else {
@@ -309,7 +313,7 @@
         }
 
         if (menu) {
-          menu.style.top = "148px";
+          menu.style.top = "143px";
           menu.style.bottom = "auto";
           menu.style.left = "12px";
           menu.style.right = "auto";
@@ -321,26 +325,34 @@
     function positionMenuActionButtons() {
       var items = isDesktopLayout()
         ? [
-            ["y2ShowDomainBtn", 116],
-            ["y2SetDomainBtn", 164],
-            ["y2ChangeDomainBtn", 212],
-            ["y2ClearDomainBtn", 260]
+            ["y2ShowDomainBtn", 108],
+            ["y2SetDomainBtn", 156],
+            ["y2ChangeDomainBtn", 204],
+            ["y2ClearDomainBtn", 252]
           ]
         : [
-            ["y2ShowDomainBtn", 196],
-            ["y2SetDomainBtn", 244],
-            ["y2ChangeDomainBtn", 292],
-            ["y2ClearDomainBtn", 340]
+            ["y2ShowDomainBtn", 186],
+            ["y2SetDomainBtn", 234],
+            ["y2ChangeDomainBtn", 282],
+            ["y2ClearDomainBtn", 330]
           ];
 
       items.forEach(function (item) {
         var el = document.getElementById(item[0]);
         if (!el) return;
 
-        el.style.top = item[1] + "px";
-        el.style.bottom = "auto";
-        el.style.left = isDesktopLayout() ? "20px" : "12px";
-        el.style.right = "auto";
+        if (isDesktopLayout()) {
+          el.style.top = "auto";
+          el.style.bottom = item[1] + "px";
+          el.style.left = "auto";
+          el.style.right = "20px";
+        } else {
+          el.style.top = item[1] + "px";
+          el.style.bottom = "auto";
+          el.style.left = "12px";
+          el.style.right = "auto";
+        }
+
         el.style.transform = "none";
         el.style.zIndex = "1000000";
       });
@@ -411,7 +423,7 @@
     if (!/\/realestate\/item\//.test(location.pathname)) return;
 
     GM_addStyle(
-      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;width:40px;height:40px;min-width:40px;padding:0;box-sizing:border-box;border-radius:50%;border:1px solid #222;background:#fff;color:#111;font:14px/1.2 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center}" +
+      "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;width:35px;height:35px;min-width:35px;padding:0;box-sizing:border-box;border-radius:50%;border:1px solid #ccc;background:#fff;color:#363636;font:14px/1.2 sans-serif;box-shadow:none;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center}" +
       "#mementoSaveBtn:disabled{opacity:.6;cursor:default}"
     );
 
