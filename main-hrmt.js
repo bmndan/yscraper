@@ -7,7 +7,7 @@
   if (window.__Y2_MAIN_HERMIT__) return;
   window.__Y2_MAIN_HERMIT__ = true;
 
-  const TOKEN = "PASTE_TOKEN_HERE";
+  const TOKEN = "Bp4SWks5Fx1LMY78bqB5sqagOD9EPn
   const API_BASE = "https://api.mementodatabase.com/v1";
   const DEBUG = false;
 
