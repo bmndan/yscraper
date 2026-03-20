@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     Y2 Main Hermit Merged
 // @version  4.8.3-hrmt
-// @match    *://*.y2.cm/*
+// @match    *://*.yad2.co.il/*
 // ==/UserScript==
 
 (function () {
