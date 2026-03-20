@@ -1,85 +1,86 @@
 // ==UserScript==
-// @name         Y2 Main Hermit
-// @match        *://*.yad2.co.il/*
+// @name     Y2 Main Hermit Merged
+// @version  1.2
+// @match    *://*.yad2.co.il/*
 // ==/UserScript==
 
 (function () {
-  if (window.__Y2_MAIN_HERMIT__) return;
-  window.__Y2_MAIN_HERMIT__ = true;
+  if (window.__Y2_MAIN_HERMIT_MERGED__) return;
+  window.__Y2_MAIN_HERMIT_MERGED__ = true;
 
-  const TOKEN = "Bp4SWks5Fx1LMY78bqB5sqagOD9EPn
+  const TOKEN = "PASTE_TOKEN_HERE";
   const API_BASE = "https://api.mementodatabase.com/v1";
   const DEBUG = false;
 
   const CFG = {
-    "libraryId": "jRdNE9YJP",
-    "domainKey": "target_domain",
-    "fields": {
-      "URL": 0,
-      "Image_Main": 4,
-      "Price": 9,
-      "Rooms": 10,
-      "Floor": 11,
-      "Area": 12,
-      "Agency": 13,
-      "Name": 14,
-      "Phone": 15,
-      "Type": 16,
-      "Floors": 17,
-      "City": 18,
-      "Location": 19,
-      "Title": 20,
-      "Description": 21,
-      "BuiltArea": 24,
-      "Name2": 27,
-      "Phone2": 28,
-      "Broker": 33,
-      "Exclusive": 34,
-      "Shelter": 36,
-      "Image_Gallery": 37,
-      "Created": 42,
-      "Published": 43,
-      "Parking": 47,
-      "Elevator": 48,
-      "Terrace": 49,
-      "AC": 50,
-      "Storage": 51,
-      "Renovated": 52,
-      "Accessibility": 53,
-      "Bars": 54,
-      "Furnished": 55,
-      "StartPrice": 56,
-      "Condition": 57,
-      "SolarHeater": 58,
-      "PrevDescription": 59,
-      "PrevPrice": 60,
-      "Image_URLs_All": 61,
-      "Listing_ID": 62,
-      "Discount": 66
+    libraryId: "jRdNE9YJP",
+    domainKey: "target_domain",
+    fields: {
+      URL: 0,
+      Image_Main: 4,
+      Price: 9,
+      Rooms: 10,
+      Floor: 11,
+      Area: 12,
+      Agency: 13,
+      Name: 14,
+      Phone: 15,
+      Type: 16,
+      Floors: 17,
+      City: 18,
+      Location: 19,
+      Title: 20,
+      Description: 21,
+      BuiltArea: 24,
+      Name2: 27,
+      Phone2: 28,
+      Broker: 33,
+      Exclusive: 34,
+      Shelter: 36,
+      Image_Gallery: 37,
+      Created: 42,
+      Published: 43,
+      Parking: 47,
+      Elevator: 48,
+      Terrace: 49,
+      AC: 50,
+      Storage: 51,
+      Renovated: 52,
+      Accessibility: 53,
+      Bars: 54,
+      Furnished: 55,
+      StartPrice: 56,
+      Condition: 57,
+      SolarHeater: 58,
+      PrevDescription: 59,
+      PrevPrice: 60,
+      Image_URLs_All: 61,
+      Listing_ID: 62,
+      Discount: 66
     },
-    "labels": {
-      "featureSection": "מה יש בנכס",
-      "furnitureSection": "פרטי ריהוט",
-      "detailsCondition": ["מצב הנכס", "מצב"],
-      "detailsParking": ["חניות"]
+    labels: {
+      featureSection: "מה יש בנכס",
+      furnitureSection: "פרטי ריהוט",
+      detailsCondition: ["מצב הנכס", "מצב"],
+      detailsParking: ["חניות"]
     },
-    "tagFlags": {
-      "Exclusive": "בלעדי",
-      "ShelterRegex": "(^|\\W)ממ[״\\\"]?ד($|\\W)"
+    tagFlags: {
+      Exclusive: "בלעדי",
+      ShelterRegex: "(^|\\W)ממ[״\\\"]?ד($|\\W)"
     },
-    "features": {
-      "Parking": "חניה",
-      "Elevator": "מעלית",
-      "Terrace": "מרפסת",
-      "AC": "מיזוג",
-      "Storage": "מחסן",
-      "Renovated": "משופצת",
-      "Accessibility": "גישה לנכים",
-      "Bars": "סורגים",
-      "Furnished": "מרוהטת",
-      "SolarHeater": "דוד שמש"
+    features: {
+      Parking: "חניה",
+      Elevator: "מעלית",
+      Terrace: "מרפסת",
+      AC: "מיזוג",
+      Storage: "מחסן",
+      Renovated: "משופצת",
+      Accessibility: "גישה לנכים",
+      Bars: "סורגים",
+      Furnished: "מרוהטת",
+      SolarHeater: "דוד שמש"
     },
-    "conditionMap": {
+    conditionMap: {
       "חדש (לא גרו בנכס)": "חדש מקבלן",
       "חדש (גרו בנכס)": "חדש - עד 10 שנים",
       "משופץ": "משופץ ב-5 שנים האחרונות",
@@ -88,43 +89,11 @@
     }
   };
 
+  const SAVE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+  const MENU_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  const WAIT_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>';
+
   const __ls = window.localStorage;
-
-  window.GM_getValue = function (key, def) {
-    try {
-      const v = __ls.getItem(key);
-      return v === null ? def : v;
-    } catch (e) {
-      return def;
-    }
-  };
-
-  window.GM_setValue = function (key, value) {
-    try {
-      __ls.setItem(key, String(value));
-    } catch (e) {}
-  };
-
-  window.GM_deleteValue = function (key) {
-    try {
-      __ls.removeItem(key);
-    } catch (e) {}
-  };
-
-  window.GM_listValues = function () {
-    try {
-      return Object.keys(__ls);
-    } catch (e) {
-      return [];
-    }
-  };
-
-  window.GM_addStyle = function (css) {
-    const style = document.createElement("style");
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
-    return style;
-  };
 
   function clean(s) {
     return String(s || "")
@@ -134,21 +103,11 @@
       .trim();
   }
 
-  function getText(sel) {
-    var el = document.querySelector(sel);
-    return el ? clean(el.innerText || el.textContent || "") : "";
-  }
-
-  function getFirstText(selectors) {
-    for (var i = 0; i < selectors.length; i++) {
-      var v = getText(selectors[i]);
-      if (v) return v;
-    }
-    return "";
-  }
-
-  function sleep(ms) {
-    return new Promise(function (r) { setTimeout(r, ms); });
+  function splitLines(s) {
+    return String(s || "")
+      .split(/\r?\n/)
+      .map(function (x) { return clean(x); })
+      .filter(Boolean);
   }
 
   function digits(s) {
@@ -183,6 +142,40 @@
       Floors: keepIf(o.Floors, function (n) { return n >= 1 && n <= 200; }),
       Floor: keepIf(o.Floor, function (n) { return n >= 0 && n <= 200; })
     };
+  }
+
+  function uniqueStrings(arr) {
+    return Array.from(new Set((arr || []).filter(Boolean).map(clean).filter(Boolean)));
+  }
+
+  function appendHistoryLine(existing, line, separator) {
+    var cur = clean(existing || "");
+    var add = clean(line || "");
+    if (!add) return cur || null;
+
+    var parts = separator === "\n"
+      ? splitLines(cur)
+      : String(cur || "").split(separator).map(clean).filter(Boolean);
+
+    if (parts.indexOf(add) !== -1) return cur || null;
+    return cur ? cur + separator + add : add;
+  }
+
+  function getText(sel) {
+    var el = document.querySelector(sel);
+    return el ? clean(el.innerText || el.textContent || "") : "";
+  }
+
+  function getFirstText(selectors) {
+    for (var i = 0; i < selectors.length; i++) {
+      var v = getText(selectors[i]);
+      if (v) return v;
+    }
+    return "";
+  }
+
+  function sleep(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
   }
 
   function getCleanItemUrl() {
@@ -225,47 +218,31 @@
     return String(Math.round(num)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   }
 
-  function splitLines(s) {
-    return String(s || "")
-      .split(/\r?\n/)
-      .map(function (x) { return clean(x); })
-      .filter(Boolean);
-  }
+  function parseDateToIsoWithOffset(text) {
+    var m = String(text || "").match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+    if (!m) return null;
 
-  function uniqueStrings(arr) {
-    return Array.from(new Set((arr || []).filter(Boolean).map(clean).filter(Boolean)));
-  }
+    var day = parseInt(m[1], 10);
+    var month = parseInt(m[2], 10);
+    var year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
 
-  function appendHistoryLine(existing, line, separator) {
-    var cur = clean(existing || "");
-    var add = clean(line || "");
-    if (!add) return cur || null;
+    var d = new Date(year, month - 1, day, 0, 0, 0);
+    function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
+    var offsetMin = -d.getTimezoneOffset();
+    var sign = offsetMin >= 0 ? "+" : "-";
+    var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
+    var mm = pad(Math.abs(offsetMin) % 60);
 
-    var parts = separator === "\n"
-      ? splitLines(cur)
-      : String(cur || "").split(separator).map(clean).filter(Boolean);
-
-    if (parts.indexOf(add) !== -1) return cur || null;
-    return cur ? cur + separator + add : add;
-  }
-
-  function extractFieldValue(entry, fieldId) {
-    if (!entry || !entry.fields) return null;
-    var f = entry.fields.find(function (x) { return x.id === fieldId; });
-    return f ? f.value : null;
-  }
-
-  function normalizeImageFieldValue(v) {
-    if (!v) return [];
-    if (Array.isArray(v)) {
-      return v.map(function (x) {
-        if (typeof x === "string") return clean(x);
-        if (x && typeof x === "object") return clean(x.url || x.value || x.path || "");
-        return "";
-      }).filter(Boolean);
-    }
-    if (typeof v === "string") return splitLines(v);
-    return [];
+    return (
+      d.getFullYear() + "-" +
+      pad(d.getMonth() + 1) + "-" +
+      pad(d.getDate()) + "T" +
+      pad(d.getHours()) + ":" +
+      pad(d.getMinutes()) + ":" +
+      pad(d.getSeconds()) +
+      sign + hh + ":" + mm
+    );
   }
 
   async function jfetch(url, opts) {
@@ -276,31 +253,43 @@
     try {
       data = t ? JSON.parse(t) : {};
     } catch (e) {
-      throw new Error("Non-JSON response: " + t.slice(0, 220));
+      throw new Error("Non-JSON response: " + t.slice(0, 300));
     }
-    if (!res.ok) throw new Error(res.status + ": " + t.slice(0, 320));
+    if (!res.ok) throw new Error(res.status + ": " + t.slice(0, 300));
     return data;
   }
 
-  var LIBRARY_ID = CFG.libraryId;
-  var DOMAIN_KEY = CFG.domainKey;
-  var FID = CFG.fields;
-
   function getStoredDomain() {
-    return GM_getValue(DOMAIN_KEY, "");
+    try {
+      return __ls.getItem(CFG.domainKey) || "";
+    } catch (e) {
+      return "";
+    }
   }
 
   function setStoredDomain(v) {
-    GM_setValue(DOMAIN_KEY, clean(v));
+    try {
+      __ls.setItem(CFG.domainKey, clean(v));
+    } catch (e) {}
   }
 
   function clearStoredDomain() {
-    GM_deleteValue(DOMAIN_KEY);
+    try {
+      __ls.removeItem(CFG.domainKey);
+    } catch (e) {}
+  }
+
+  function listStoredKeys() {
+    try {
+      return Object.keys(__ls);
+    } catch (e) {
+      return [];
+    }
   }
 
   function onStoredDomain() {
     var d = getStoredDomain();
-    return !!d && location.hostname === d;
+    return !d || location.hostname === d;
   }
 
   function setButtonIcon(btn, html, title) {
@@ -314,6 +303,8 @@
 
   function styleMainCircleButton(btn) {
     if (!btn) return;
+    btn.style.position = "fixed";
+    btn.style.zIndex = "2147483647";
     btn.style.width = "35px";
     btn.style.height = "35px";
     btn.style.minWidth = "35px";
@@ -329,6 +320,7 @@
     btn.style.boxShadow = "none";
     btn.style.color = "#363636";
     btn.style.background = "#fff";
+    btn.style.cursor = "pointer";
   }
 
   function makeUiButton(id, text, bottom, onClick) {
@@ -340,7 +332,7 @@
     btn.style.position = "fixed";
     btn.style.right = "16px";
     btn.style.bottom = bottom + "px";
-    btn.style.zIndex = "999999";
+    btn.style.zIndex = "2147483647";
     btn.style.padding = "10px 12px";
     btn.style.borderRadius = "10px";
     btn.style.border = "1px solid #ccc";
@@ -429,7 +421,7 @@
       }
 
       el.style.transform = "none";
-      el.style.zIndex = "1000000";
+      el.style.zIndex = "2147483647";
     });
   }
 
@@ -452,9 +444,9 @@
     function showActions() {
       makeUiButton("y2ShowDomainBtn", "SHOW DOMAIN", 226, function () {
         alert(
-          "Stored domain: " + getStoredDomain() +
+          "Stored domain: " + (getStoredDomain() || "(none)") +
           "\nCurrent host: " + location.hostname +
-          "\nKeys: " + GM_listValues().join(", ")
+          "\nKeys: " + listStoredKeys().join(", ")
         );
       });
 
@@ -490,32 +482,6 @@
     styleMainCircleButton(menuBtn);
     setButtonIcon(menuBtn, MENU_ICON, "הגדרות");
   }
-
-  installDomainUi();
-  positionMainButtons();
-
-  if (!onStoredDomain()) return;
-  if (!/\/realestate\/item\//.test(location.pathname)) return;
-
-  GM_addStyle(
-    "#mementoSaveBtn{position:fixed;right:16px;bottom:16px;z-index:999999;width:35px;height:35px;min-width:35px;padding:0;box-sizing:border-box;border-radius:50%;border:1px solid #ccc;background:#fff;color:#363636;font:14px/1.2 sans-serif;box-shadow:none;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center}" +
-    "#mementoSaveBtn:disabled{opacity:.6;cursor:default}"
-  );
-
-  var btn = document.getElementById("mementoSaveBtn");
-  if (!btn) {
-    btn = document.createElement("button");
-    btn.id = "mementoSaveBtn";
-    document.body.appendChild(btn);
-  }
-  styleMainCircleButton(btn);
-  setButtonIcon(btn, SAVE_ICON, "שמירה");
-  positionMainButtons();
-
-  window.addEventListener("resize", function () {
-    positionMainButtons();
-    positionMenuActionButtons();
-  });
 
   function extractRoomsFloorAreaFromTiles() {
     var container =
@@ -562,9 +528,10 @@
   }
 
   function extractTitleAndDescription() {
-    var Title = getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null;
-    var Description = getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null;
-    return { Title: Title, Description: Description };
+    return {
+      Title: getFirstText(["[data-testid='ad-title']", "h1", "[class*='heading_heading']"]) || null,
+      Description: getFirstText(["[data-testid='description']", "[class*='description_description']"]) || null
+    };
   }
 
   function extractAddressSplit() {
@@ -605,13 +572,8 @@
       return m ? Number(String(m[1]).replace(/[^\d]/g, "")) : null;
     }
 
-    var currentText =
-      (document.querySelector('[data-testid="current-price"]') || {}).innerText ||
-      "";
-
-    var prevText =
-      (document.querySelector('[data-testid="previous-tagged-price"]') || {}).innerText ||
-      "";
+    var currentText = (document.querySelector('[data-testid="current-price"]') || {}).innerText || "";
+    var prevText = (document.querySelector('[data-testid="previous-tagged-price"]') || {}).innerText || "";
 
     var currentPrice = parsePriceValue(currentText);
     var oldDisplayedPrice = parsePriceValue(prevText);
@@ -741,10 +703,9 @@
     );
 
     return {
-      Image_URL_First: u[0] || null,
-      Gallery_List: u.slice(1),
-      All_Image_URLs: u,
-      imgCount: u.length
+      Image_Main: u[0] || null,
+      Image_Gallery: u.slice(1),
+      Image_URLs_All_New: u
     };
   }
 
@@ -885,33 +846,6 @@
     if (!el) return null;
     var m = clean(el.textContent).match(/(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/);
     return m ? m[0] : null;
-  }
-
-  function parseDateToIsoWithOffset(text) {
-    var m = String(text || "").match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-    if (!m) return null;
-
-    var day = parseInt(m[1], 10);
-    var month = parseInt(m[2], 10);
-    var year = parseInt(m[3], 10);
-    if (year < 100) year += 2000;
-
-    var d = new Date(year, month - 1, day, 0, 0, 0);
-    function pad(n) { return String(Math.abs(n)).padStart(2, "0"); }
-    var offsetMin = -d.getTimezoneOffset();
-    var sign = offsetMin >= 0 ? "+" : "-";
-    var hh = pad(Math.floor(Math.abs(offsetMin) / 60));
-    var mm = pad(Math.abs(offsetMin) % 60);
-
-    return (
-      d.getFullYear() + "-" +
-      pad(d.getMonth() + 1) + "-" +
-      pad(d.getDate()) + "T" +
-      pad(d.getHours()) + ":" +
-      pad(d.getMinutes()) + ":" +
-      pad(d.getSeconds()) +
-      sign + hh + ":" + mm
-    );
   }
 
   function extractTagsText() {
@@ -1113,9 +1047,9 @@
         map: map,
         features: features,
         condition: condition,
-        config: CFG,
         images: imgs,
-        priceInfo: priceInfo
+        priceInfo: priceInfo,
+        contacts: contacts
       });
     }
 
@@ -1140,10 +1074,9 @@
       Location: addr.Location,
       City: addr.City,
 
-      Image_Main: imgs.Image_URL_First,
-      Image_Gallery: imgs.Gallery_List,
-      Image_URLs_All_New: imgs.All_Image_URLs,
-      imgCount: imgs.imgCount,
+      Image_Main: imgs.Image_Main,
+      Image_Gallery: imgs.Image_Gallery,
+      Image_URLs_All_New: imgs.Image_URLs_All_New,
 
       Agency: contacts.Agency,
       Name: contacts.Name,
@@ -1170,15 +1103,34 @@
     };
   }
 
+  function extractFieldValue(entry, fieldId) {
+    if (!entry || !entry.fields) return null;
+    var f = entry.fields.find(function (x) { return x.id === fieldId; });
+    return f ? f.value : null;
+  }
+
+  function normalizeImageFieldValue(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) {
+      return v.map(function (x) {
+        if (typeof x === "string") return clean(x);
+        if (x && typeof x === "object") return clean(x.url || x.value || x.path || "");
+        return "";
+      }).filter(Boolean);
+    }
+    if (typeof v === "string") return splitLines(v);
+    return [];
+  }
+
   async function upsertToMemento(v) {
-    var listUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+    var listUrl = API_BASE + "/libraries/" + encodeURIComponent(CFG.libraryId) +
       "/entries?token=" + encodeURIComponent(TOKEN) + "&pageSize=1000";
     var list = await jfetch(listUrl, { method: "GET" });
 
     var existingEntry = null;
 
     (list.entries || []).some(function (e) {
-      var idVal = extractFieldValue(e, FID.Listing_ID);
+      var idVal = extractFieldValue(e, CFG.fields.Listing_ID);
       if (clean(idVal || "") && clean(idVal || "") === clean(v.Listing_ID || "")) {
         existingEntry = e;
         return true;
@@ -1188,7 +1140,7 @@
 
     if (!existingEntry) {
       (list.entries || []).some(function (e) {
-        var urlVal = extractFieldValue(e, FID.URL);
+        var urlVal = extractFieldValue(e, CFG.fields.URL);
         if (clean(urlVal || "") === clean(v.URL || "")) {
           existingEntry = e;
           return true;
@@ -1200,14 +1152,14 @@
     var finalValues = Object.assign({}, v);
 
     if (existingEntry) {
-      var existingStartPrice = extractFieldValue(existingEntry, FID.StartPrice);
-      var existingPrice = extractFieldValue(existingEntry, FID.Price);
-      var existingPrevPrice = extractFieldValue(existingEntry, FID.PrevPrice);
-      var existingDesc = extractFieldValue(existingEntry, FID.Description);
-      var existingPrevDesc = extractFieldValue(existingEntry, FID.PrevDescription);
-      var existingAllImages = extractFieldValue(existingEntry, FID.Image_URLs_All);
-      var existingMain = extractFieldValue(existingEntry, FID.Image_Main);
-      var existingGallery = extractFieldValue(existingEntry, FID.Image_Gallery);
+      var existingStartPrice = extractFieldValue(existingEntry, CFG.fields.StartPrice);
+      var existingPrice = extractFieldValue(existingEntry, CFG.fields.Price);
+      var existingPrevPrice = extractFieldValue(existingEntry, CFG.fields.PrevPrice);
+      var existingDesc = extractFieldValue(existingEntry, CFG.fields.Description);
+      var existingPrevDesc = extractFieldValue(existingEntry, CFG.fields.PrevDescription);
+      var existingAllImages = extractFieldValue(existingEntry, CFG.fields.Image_URLs_All);
+      var existingMain = extractFieldValue(existingEntry, CFG.fields.Image_Main);
+      var existingGallery = extractFieldValue(existingEntry, CFG.fields.Image_Gallery);
 
       finalValues.StartPrice =
         existingStartPrice != null && String(existingStartPrice).trim() !== ""
@@ -1285,71 +1237,92 @@
       fields.push({ id: id, value: val });
     }
 
-    add(FID.URL, finalValues.URL);
-    add(FID.Listing_ID, finalValues.Listing_ID);
-    add(FID.Created, finalValues.Created);
-    add(FID.Published, finalValues.Published);
+    add(CFG.fields.URL, finalValues.URL);
+    add(CFG.fields.Listing_ID, finalValues.Listing_ID);
+    add(CFG.fields.Created, finalValues.Created);
+    add(CFG.fields.Published, finalValues.Published);
 
-    if (finalValues.Image_Main) add(FID.Image_Main, finalValues.Image_Main);
-    if (finalValues.Image_Gallery && finalValues.Image_Gallery.length) add(FID.Image_Gallery, finalValues.Image_Gallery);
-    add(FID.Image_URLs_All, finalValues.Image_URLs_All);
+    if (finalValues.Image_Main) add(CFG.fields.Image_Main, finalValues.Image_Main);
+    if (finalValues.Image_Gallery && finalValues.Image_Gallery.length) add(CFG.fields.Image_Gallery, finalValues.Image_Gallery);
+    add(CFG.fields.Image_URLs_All, finalValues.Image_URLs_All);
 
-    add(FID.Price, finalValues.Price);
-    add(FID.StartPrice, finalValues.StartPrice);
-    add(FID.PrevPrice, finalValues.PrevPrice);
-    add(FID.Discount, finalValues.Discount);
+    add(CFG.fields.Price, finalValues.Price);
+    add(CFG.fields.StartPrice, finalValues.StartPrice);
+    add(CFG.fields.PrevPrice, finalValues.PrevPrice);
+    add(CFG.fields.Discount, finalValues.Discount);
 
-    add(FID.Rooms, finalValues.Rooms);
-    add(FID.Floor, finalValues.Floor);
-    add(FID.Area, finalValues.Area);
-    add(FID.Floors, finalValues.Floors);
-    add(FID.BuiltArea, finalValues.BuiltArea);
+    add(CFG.fields.Rooms, finalValues.Rooms);
+    add(CFG.fields.Floor, finalValues.Floor);
+    add(CFG.fields.Area, finalValues.Area);
+    add(CFG.fields.Floors, finalValues.Floors);
+    add(CFG.fields.BuiltArea, finalValues.BuiltArea);
 
-    add(FID.Title, finalValues.Title);
-    add(FID.Description, finalValues.Description);
-    add(FID.PrevDescription, finalValues.PrevDescription);
+    add(CFG.fields.Title, finalValues.Title);
+    add(CFG.fields.Description, finalValues.Description);
+    add(CFG.fields.PrevDescription, finalValues.PrevDescription);
 
-    add(FID.Type, finalValues.Type);
-    add(FID.Location, finalValues.Location);
-    add(FID.City, finalValues.City);
+    add(CFG.fields.Type, finalValues.Type);
+    add(CFG.fields.Location, finalValues.Location);
+    add(CFG.fields.City, finalValues.City);
 
-    add(FID.Agency, finalValues.Agency);
-    add(FID.Name, finalValues.Name);
-    add(FID.Phone, finalValues.Phone);
-    add(FID.Name2, finalValues.Name2);
-    add(FID.Phone2, finalValues.Phone2);
+    add(CFG.fields.Agency, finalValues.Agency);
+    add(CFG.fields.Name, finalValues.Name);
+    add(CFG.fields.Phone, finalValues.Phone);
+    add(CFG.fields.Name2, finalValues.Name2);
+    add(CFG.fields.Phone2, finalValues.Phone2);
 
-    add(FID.Broker, finalValues.Broker);
-    add(FID.Exclusive, finalValues.Exclusive);
-    add(FID.Shelter, finalValues.Shelter);
+    add(CFG.fields.Broker, finalValues.Broker);
+    add(CFG.fields.Exclusive, finalValues.Exclusive);
+    add(CFG.fields.Shelter, finalValues.Shelter);
 
-    add(FID.Parking, finalValues.Parking);
-    add(FID.Elevator, finalValues.Elevator);
-    add(FID.Terrace, finalValues.Terrace);
-    add(FID.AC, finalValues.AC);
-    add(FID.Storage, finalValues.Storage);
-    add(FID.Renovated, finalValues.Renovated);
-    add(FID.Accessibility, finalValues.Accessibility);
-    add(FID.Bars, finalValues.Bars);
-    add(FID.Furnished, finalValues.Furnished);
-    add(FID.SolarHeater, finalValues.SolarHeater);
+    add(CFG.fields.Parking, finalValues.Parking);
+    add(CFG.fields.Elevator, finalValues.Elevator);
+    add(CFG.fields.Terrace, finalValues.Terrace);
+    add(CFG.fields.AC, finalValues.AC);
+    add(CFG.fields.Storage, finalValues.Storage);
+    add(CFG.fields.Renovated, finalValues.Renovated);
+    add(CFG.fields.Accessibility, finalValues.Accessibility);
+    add(CFG.fields.Bars, finalValues.Bars);
+    add(CFG.fields.Furnished, finalValues.Furnished);
+    add(CFG.fields.SolarHeater, finalValues.SolarHeater);
 
-    add(FID.Condition, finalValues.Condition);
+    add(CFG.fields.Condition, finalValues.Condition);
 
     var body = JSON.stringify({ fields: fields });
 
     if (existingEntry) {
-      var putUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+      var putUrl = API_BASE + "/libraries/" + encodeURIComponent(CFG.libraryId) +
         "/entries/" + encodeURIComponent(existingEntry.id) + "?token=" + encodeURIComponent(TOKEN);
       await jfetch(putUrl, { method: "PUT", body: body });
       alert("✅ עודכן");
     } else {
-      var postUrl = API_BASE + "/libraries/" + encodeURIComponent(LIBRARY_ID) +
+      var postUrl = API_BASE + "/libraries/" + encodeURIComponent(CFG.libraryId) +
         "/entries?token=" + encodeURIComponent(TOKEN);
       await jfetch(postUrl, { method: "POST", body: body });
       alert("✅ נשמר");
     }
   }
+
+  installDomainUi();
+  positionMainButtons();
+
+  if (!onStoredDomain()) return;
+  if (!/\/realestate\/item\//.test(location.pathname)) return;
+
+  var btn = document.getElementById("mementoSaveBtn");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "mementoSaveBtn";
+    document.body.appendChild(btn);
+  }
+  styleMainCircleButton(btn);
+  setButtonIcon(btn, SAVE_ICON, "שמירה");
+  positionMainButtons();
+
+  window.addEventListener("resize", function () {
+    positionMainButtons();
+    positionMenuActionButtons();
+  });
 
   btn.addEventListener("click", async function () {
     btn.disabled = true;
