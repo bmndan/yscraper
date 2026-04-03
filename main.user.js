@@ -269,7 +269,7 @@
       btn.style.padding = "10px 12px";
       btn.style.borderRadius = "10px";
       btn.style.border = "1px solid #ccc";
-      btn.style.background = "#fff";
+      btn.style.background = "#000";
       btn.style.color = "#363636";
       btn.style.font = "14px/1.2 sans-serif";
       btn.style.boxShadow = "none";
