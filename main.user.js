@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Y2 Main
+// @name         Y2 Main User
 // @namespace    berman
 // @version      4.8.3
 // @match        *://*/*
