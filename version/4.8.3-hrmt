@@ -13,7 +13,7 @@
   const DEBUG = false;
 
   const CFG = {
-    libraryId: "jRdNE9YJP",
+    libraryId: "mUjNFvVgX",
     domainKey: "target_domain",
     fields: {
       URL: 0,
