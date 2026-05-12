@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name     Y2 Main Hermit Merged
 // @version  main
-// @match    *://*.yad2.co.il/*
+// @match    *://*.___.com/*
 // ==/UserScript==
 
 (function () {
   if (window.__Y2_MAIN_HERMIT_MERGED__) return;
   window.__Y2_MAIN_HERMIT_MERGED__ = true;
 
-  const TOKEN = "Bp4SWks5Fx1LMY78bqB5sqagOD9EPn";
+  const TOKEN = "_____________________________________";
   const API_BASE = "https://api.mementodatabase.com/v1";
   const DEBUG = false;
 
